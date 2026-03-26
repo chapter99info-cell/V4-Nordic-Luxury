@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "Application user profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "client"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "medicalAlerts": { "type": "string" },
+        "painPoints": { "type": "array", "items": { "type": "string" } },
+        "painLevel": { "type": "number" },
+        "fcmToken": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "notifications": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["booking_assigned", "booking_cancelled", "payment_received", "system"] },
+        "bookingId": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "isRead", "createdAt"]
+    },
+    "bookings": {
+      "title": "Booking",
+      "description": "A massage session booking",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientEmail": { "type": "string", "format": "email" },
+        "clientPhone": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "therapistId": { "type": "string" },
+        "therapistName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "duration": { "type": "number" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "waiting-for-deposit", "payment_pending", "payment_rejected", "completed", "no-show"] },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "deposit-paid", "fully-paid", "pending-verification"] },
+        "paymentMethod": { "type": "string", "enum": ["Cash", "Card", "Transfer"] },
+        "paymentSlipUrl": { "type": "string" },
+        "isCashCollectedByOwner": { "type": "boolean" },
+        "depositAmountPaid": { "type": "number" },
+        "depositPaid": { "type": "boolean" },
+        "intakeFormCompleted": { "type": "boolean" },
+        "isWalkIn": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "needsHealthFundRebate": { "type": "boolean" },
+        "source": { "type": "string", "enum": ["AI Assistant", "Web", "Walk-in"] },
+        "pricingLogic": {
+          "type": "object",
+          "properties": {
+            "basePrice": { "type": "number" },
+            "gstAmount": { "type": "number" },
+            "totalPrice": { "type": "number" },
+            "depositRequired": { "type": "number" },
+            "currency": { "type": "string" }
+          }
+        }
+      },
+      "required": ["clientName", "serviceName", "date", "startTime", "status"]
+    },
+    "services": {
+      "title": "Service",
+      "description": "A massage service offered",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "fullPrice": { "type": "number" },
+        "depositAmount": { "type": "number" },
+        "duration": { "type": "number" },
+        "image": { "type": "string" }
+      },
+      "required": ["name", "fullPrice", "depositAmount", "duration"]
+    },
+    "staff": {
+      "title": "Staff",
+      "description": "Therapist profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "label": { "type": "string" },
+        "avatar": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Working", "Off"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "role", "status", "isActive"]
+    },
+    "products": {
+      "title": "Product",
+      "description": "A product sold by the clinic (e.g., oils, balms)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price"]
+    },
+    "hesitation_logs": {
+      "title": "Hesitation Log",
+      "description": "Log of user hesitation on a service",
+      "type": "object",
+      "properties": {
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "durationBeforeLog": { "type": "string" },
+        "action": { "type": "string" }
+      },
+      "required": ["serviceId", "serviceName", "timestamp"]
+    },
+    "shop_settings": {
+      "title": "Shop Settings",
+      "description": "General settings for the shop",
+      "type": "object",
+      "properties": {
+        "ownerPin": { "type": "string" },
+        "ownerPrivateEmail": { "type": "string", "format": "email" },
+        "lineNotifyToken": { "type": "string" },
+        "promo": {
+          "type": "object",
+          "properties": {
+            "isEnabled": { "type": "boolean" },
+            "discountPercentage": { "type": "number" },
+            "updatedAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profiles"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "bookings",
+      "description": "Session bookings"
+    },
+    "/services/{serviceId}": {
+      "schema": "services",
+      "description": "Available services"
+    },
+    "/staff/{staffId}": {
+      "schema": "staff",
+      "description": "Therapist profiles"
+    },
+    "/products/{productId}": {
+      "schema": "products",
+      "description": "Products for sale"
+    },
+    "/hesitation_logs/{logId}": {
+      "schema": "hesitation_logs",
+      "description": "Hesitation logs for analytics"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notifications",
+      "description": "User notifications"
+    },
+    "/shop_settings/security": {
+      "schema": "shop_settings",
+      "description": "Security settings including owner PIN and private contact info"
+    }
+  }
+}

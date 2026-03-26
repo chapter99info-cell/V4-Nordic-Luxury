@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Prompt", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-background: var(--background);
+  --color-section: var(--section);
+  --color-earth: var(--earth);
+  --color-sage: var(--sage);
+  --color-beige: var(--beige);
+  --color-gold: var(--gold);
+}
+
+:root {
+  --primary: #D4AF37;
+  --secondary: #1A1A1B;
+  --accent: #D4AF37;
+  --background: #FFFFFF;
+  --section: #FAFAF5;
+  --earth: #1A1A1B;
+  --sage: #D4AF37;
+  --beige: #F5F5F0;
+  --gold: #D4AF37;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-earth antialiased;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

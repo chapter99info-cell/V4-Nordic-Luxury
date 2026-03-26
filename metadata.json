@@ -1,0 +1,5 @@
+{
+  "name": "Mira Royale",
+  "description": "A premium booking experience for Mira Royale, featuring 'Modern Thai Heritage' design, smart calendar with buffer times, and deposit collection.",
+  "requestFramePermissions": ["camera"]
+}
