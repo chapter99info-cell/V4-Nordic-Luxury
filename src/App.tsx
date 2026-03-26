@@ -198,7 +198,7 @@ function AppContent() {
                 {activeTab === 'dashboard' && <AdminDashboard key="dashboard" role={role} config={shopConfigState} onQuickAdd={() => setIsQuickAddOpen(true)} />}
                 
                 {/* 🌟 หน้า V4 Dashboard สุดหรูของเรา */}
-                {activeTab === 'v4' && <V4Dashboard key="v4" />}
+                {activeTab === 'v4' && <V4Dashboard key="v4" user={user} role={role} />}
                 
                 {activeTab === 'v4-mock' && <V4MockDashboard key="v4-mock" />}
                 {activeTab === 'v4-showcase' && <V4CoreFeatureShowcase key="v4-showcase" />}
