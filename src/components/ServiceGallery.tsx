@@ -288,7 +288,7 @@ export const ServiceGallery: React.FC<ServiceGalleryProps> = ({ onSelectService 
                 transition: { type: 'spring', damping: 15 }
               }} 
               exit={{ y: 100, opacity: 0 }}
-              className="fixed bottom-32 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-50"
+              className="fixed bottom-32 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-50 print:hidden"
             >
               <motion.button 
                 animate={{ 

@@ -88,7 +88,11 @@ export const PendingBookingOverlay: React.FC<PendingBookingOverlayProps> = ({ st
       await apiService.appendToGoogleSheets({
         date: bookingData.date,
         client: bookingData.clientName,
+        phone: bookingData.clientPhone,
+        email: bookingData.clientEmail,
         service: bookingData.serviceName,
+        price: bookingData.price,
+        note: bookingData.note || '',
         status: 'Confirmed',
         source: 'Website',
         timeSlot: `${bookingData.startTime} - ${bookingData.endTime}`,

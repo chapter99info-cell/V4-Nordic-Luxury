@@ -9,6 +9,7 @@ import { format, addMinutes, parse } from 'date-fns';
 import { Booking, Staff, Service } from '../types';
 import { shopConfig } from '../config/shopConfig';
 import { PendingBookingOverlay } from './PendingBookingOverlay';
+import { Printer } from 'lucide-react';
 
 // ---------------------------------------------------------
 // 1. Configuration & Styling Palette (Nordic Luxury)
@@ -188,10 +189,10 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
   // MAIN RENDER
   // ---------------------------------------------------------
   return (
-    <div className={`min-h-screen ${palette.bg} p-6 font-sans ${palette.text}`}>
+    <div className={`min-h-screen ${palette.bg} p-6 font-sans ${palette.text} print:ml-0 print:p-0 print:w-full`}>
       
       {/* HEADER SECTION */}
-      <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+      <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 print:mb-2">
         <div className="text-center md:text-left">
           <h1 className={`text-5xl font-black tracking-tighter ${palette.headerText} uppercase`}>
             Mira Royale
@@ -203,20 +204,27 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
         
         <div className="flex flex-wrap items-center gap-4">
           <button 
+            onClick={() => window.print()} 
+            className="flex items-center gap-2 bg-earth/10 text-earth hover:bg-earth hover:text-white px-4 py-2 rounded-xl transition-all font-bold text-sm print:hidden"
+          >
+            <Printer size={18} />
+            <span>Print Daily Schedule</span>
+          </button>
+          <button 
             onClick={() => setShowSignalCenter(true)}
-            className="bg-[#006D77] hover:bg-[#005a63] text-white px-8 py-4 rounded-full font-black text-sm shadow-lg shadow-[#006D77]/20 transition-all active:scale-95"
+            className="bg-[#006D77] hover:bg-[#005a63] text-white px-8 py-4 rounded-full font-black text-sm shadow-lg shadow-[#006D77]/20 transition-all active:scale-95 print:hidden"
           >
             SIGNAL CENTER
           </button>
           <button 
             onClick={() => setShowMobilePreview(true)}
-            className="bg-stone-100 hover:bg-stone-200 text-stone-600 px-8 py-4 rounded-full font-black text-sm transition-all active:scale-95"
+            className="bg-stone-100 hover:bg-stone-200 text-stone-600 px-8 py-4 rounded-full font-black text-sm transition-all active:scale-95 print:hidden"
           >
             MOBILE PREVIEW
           </button>
           <button 
             onClick={() => handleOpenWalkIn('', 'Unassigned', format(new Date(), 'HH:mm'))}
-            className="bg-[#D4A373] hover:bg-[#B5895D] text-white px-8 py-4 rounded-full font-black text-sm shadow-[0_15px_30px_-10px_rgba(212,163,115,0.5)] transition-all active:scale-95"
+            className="bg-[#D4A373] hover:bg-[#B5895D] text-white px-8 py-4 rounded-full font-black text-sm shadow-[0_15px_30px_-10px_rgba(212,163,115,0.5)] transition-all active:scale-95 print:hidden"
           >
             + WALK-IN NOW
           </button>
@@ -224,7 +232,7 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
       </header>
 
       {/* DASHBOARD GRID */}
-      <div className="bg-white rounded-[3rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.08)] overflow-hidden border border-stone-100">
+      <div className="bg-white rounded-[3rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.08)] overflow-hidden border border-stone-100 print:shadow-none print:p-0">
         <div className="overflow-x-auto scrollbar-hide">
           <div className="min-w-[1200px]">
             
@@ -274,7 +282,7 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
                           onClick={() => handleOpenWalkIn(staff.id, staff.name, time)}
                           className="w-full h-full rounded-[1.5rem] border-2 border-dashed border-stone-100 hover:border-[#D4A373] hover:bg-[#FAF9F6] flex items-center justify-center cursor-pointer group/slot transition-all"
                         >
-                          <span className="text-4xl text-stone-200 group-hover/slot:text-[#D4A373] group-hover/slot:scale-125 transition-all font-light">
+                          <span className="text-4xl text-stone-200 group-hover/slot:text-[#D4A373] group-hover/slot:scale-125 transition-all font-light print:hidden">
                             +
                           </span>
                         </div>
@@ -289,13 +297,13 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
       </div>
 
       {/* FOOTER NOTE */}
-      <footer className="mt-8 text-center text-stone-400 font-bold text-xs uppercase tracking-[0.3em]">
+      <footer className="mt-8 text-center text-stone-400 font-bold text-xs uppercase tracking-[0.3em] print:hidden">
         Mira Royale Management System V4 • Premium Edition
       </footer>
 
       {/* MODAL: WALK-IN */}
       {showWalkInModal && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xl flex justify-center items-center p-6 z-50 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xl flex justify-center items-center p-6 z-50 animate-in fade-in duration-300 print:hidden">
           <div className="bg-[#FAF9F6] rounded-[3.5rem] w-full max-w-2xl overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] border border-white">
             <div className="bg-[#2D5A27] p-12 text-white text-center">
               <h2 className="text-5xl font-black uppercase tracking-tighter italic">New Booking</h2>
@@ -346,7 +354,7 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
 
       {/* MODAL: CANCEL/DELETE */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-2xl flex justify-center items-center p-6 z-50 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-2xl flex justify-center items-center p-6 z-50 animate-in zoom-in-95 duration-300 print:hidden">
           <div className="bg-white rounded-[3.5rem] w-full max-w-md p-12 shadow-2xl text-center border-[6px] border-stone-50">
             <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
               <span className="text-rose-500 text-5xl font-black">!</span>
@@ -380,7 +388,7 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
 
       {/* MODAL: SIGNAL CENTER */}
       {showSignalCenter && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xl flex justify-center items-center p-6 z-50 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xl flex justify-center items-center p-6 z-50 animate-in fade-in duration-300 print:hidden">
           <div className="w-full max-w-lg relative">
             <button 
               onClick={() => setShowSignalCenter(false)}
@@ -406,7 +414,9 @@ export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
       )}
 
       {/* REAL-TIME WEBSITE BOOKING OVERLAY */}
-      <PendingBookingOverlay staffList={staffList} services={services} />
+      <div className="print:hidden">
+        <PendingBookingOverlay staffList={staffList} services={services} />
+      </div>
 
     </div>
   );

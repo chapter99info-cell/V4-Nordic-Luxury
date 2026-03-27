@@ -43,7 +43,7 @@ export const V4MockDashboard: React.FC = () => {
       {/* HEADER: Greeting & Date */}
       <header className="mb-8 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-[#006D77] mb-1">สวัสดีค่ะ คุณป้า 🙏</h1>
+          <h1 className="text-3xl font-bold text-[#006D77] mb-1">สวัสดีค่ะ คุณพี่เจ้าของร้าน 🙏</h1>
           <p className="text-stone-500 font-medium">วันนี้มีลูกค้า {MOCK_DATA.stats.customers} ท่านค่ะ</p>
         </div>
         <div className="text-right hidden sm:block">

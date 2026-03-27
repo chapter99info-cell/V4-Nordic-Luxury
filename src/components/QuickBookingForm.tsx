@@ -167,7 +167,7 @@ export const QuickBookingForm: React.FC = () => {
                 <button 
                   type="submit"
                   disabled={status === 'loading'}
-                  className="w-full bg-[#4A5D23] text-white py-5 rounded-xl font-bold text-sm uppercase tracking-[0.2em] hover:bg-[#3a4a1c] active:scale-95 disabled:opacity-50 transition-all shadow-lg shadow-[#4A5D23]/20"
+                  className="w-full bg-[#4A5D23] text-white py-5 rounded-xl font-bold text-sm uppercase tracking-[0.2em] hover:bg-[#3a4a1c] active:scale-95 disabled:opacity-50 transition-all shadow-lg shadow-[#4A5D23]/20 print:hidden"
                 >
                   {status === 'loading' ? 'Sending Data...' : 'CONFIRM BOOKING'}
                 </button>

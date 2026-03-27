@@ -17,7 +17,7 @@ async function startServer() {
 
   // API Route for Google Script Webhook
   app.post("/api/webhook/google-script", async (req, res) => {
-    let googleScriptUrl = process.env.GOOGLE_SCRIPT_URL;
+    let googleScriptUrl = process.env.GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyy5PaAAflJzCGGz6U7TdszDHPv82NC45Eo3kzHk4kbGkVFVn2tiNYn2SGfrknM0zNBbA/exec';
     if (!googleScriptUrl) {
       console.warn("GOOGLE_SCRIPT_URL is not defined in environment variables.");
       return res.status(500).json({ error: "Webhook URL not configured" });

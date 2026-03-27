@@ -42,3 +42,34 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+  
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure the dashboard grid is visible and doesn't scroll */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  
+  .min-w-\[1200px\] {
+    min-width: 100% !important;
+  }
+
+  /* Make sure the text is black for better readability on paper */
+  .text-stone-400, .text-stone-500 {
+    color: #444 !important;
+  }
+}

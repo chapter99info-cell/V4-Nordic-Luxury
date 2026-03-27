@@ -18,7 +18,8 @@ import {
   Award,
   Zap,
   Check,
-  X
+  X,
+  Printer
 } from 'lucide-react';
 import { collection, query, onSnapshot, orderBy, limit, where, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -345,19 +346,26 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
   return (
     <div className="space-y-10">
       {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 print:mb-2">
         <div>
           <h2 className="text-3xl font-serif font-bold text-primary mb-1">Sawadee, {role === 'admin' ? 'Admin' : 'Staff'}</h2>
           <p className="text-earth/50 text-sm">Here's what's happening at Mira this month.</p>
         </div>
         <div className="flex items-center gap-4">
           <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-earth/10 text-earth hover:bg-earth hover:text-white px-4 py-2 rounded-xl transition-all font-bold text-sm print:hidden"
+          >
+            <Printer size={18} />
+            <span>Print Daily Schedule</span>
+          </button>
+          <button 
             onClick={onQuickAdd}
-            className="flex items-center gap-2 bg-primary text-white px-6 py-4 rounded-[2rem] font-bold text-xs hover:bg-sage transition-all shadow-lg shadow-primary/20"
+            className="flex items-center gap-2 bg-primary text-white px-6 py-4 rounded-[2rem] font-bold text-xs hover:bg-sage transition-all shadow-lg shadow-primary/20 print:hidden"
           >
             <Plus size={18} /> QUICK ADD (Walk-in)
           </button>
-          <div className="flex items-center gap-4 bg-primary/5 px-8 py-4 rounded-[2rem] border border-primary/10 shadow-sm">
+          <div className="flex items-center gap-4 bg-primary/5 px-8 py-4 rounded-[2rem] border border-primary/10 shadow-sm print:hidden">
             <div className="text-right">
               <p className="text-[10px] font-bold text-primary/40 uppercase tracking-[0.2em]">Today's Revenue</p>
               <p className="text-2xl font-serif font-bold text-primary">TODAY'S REVENUE: $1,250.00</p>
@@ -370,10 +378,12 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
       </div>
 
       {/* AI Business Manager Insights */}
-      <BusinessInsights bookings={bookings} staff={staff} />
+      <div className="print:hidden">
+        <BusinessInsights bookings={bookings} staff={staff} />
+      </div>
 
       {/* Daily Revenue Report Section */}
-      <div className="bg-white rounded-[3rem] border border-beige/20 p-8 shadow-sm">
+      <div className="bg-white rounded-[3rem] border border-beige/20 p-8 shadow-sm print:hidden">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h4 className="text-xl font-serif font-bold text-primary">Daily Revenue Report</h4>
@@ -412,7 +422,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
       </div>
 
       {/* Stats Grid - 4 Column Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 print:hidden">
         {[
           { label: 'Monthly Revenue', value: `$${stats.revenue.toLocaleString()}`, icon: DollarSign, color: 'bg-emerald-50 text-emerald-600' },
           { label: 'Monthly Bookings', value: stats.bookingsCount, icon: CalendarIcon, color: 'bg-amber-50 text-amber-600' },
@@ -438,12 +448,12 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
       </div>
 
       {/* Visuals: Charts & List */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:hidden">
         {/* Revenue Trend Chart */}
         <div className="lg:col-span-2 bg-white rounded-[3rem] border border-beige/20 p-8 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h4 className="text-xl font-serif font-bold text-primary">Daily Revenue Report</h4>
-            <button className="text-[10px] font-bold uppercase tracking-widest text-primary/40 hover:text-primary flex items-center gap-1">
+            <button className="text-[10px] font-bold uppercase tracking-widest text-primary/40 hover:text-primary flex items-center gap-1 print:hidden">
               <Download size={14} /> Export CSV
             </button>
           </div>
@@ -681,7 +691,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
           <h4 className="text-xl font-serif font-bold text-primary">Recent Transactions</h4>
           
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 print:hidden">
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-earth/30" size={16} />
@@ -781,7 +791,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
                     </span>
                   </td>
                   <td className="py-4">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
                       {booking.status === 'pending' && (
                         <button 
                           onClick={() => handleApprove(booking.id)}
@@ -848,15 +858,19 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
       </div>
 
       {/* Manual Block Management Section */}
-      <div id="manual-block-section">
+      <div id="manual-block-section" className="print:hidden">
         <ManualBlockManagement />
       </div>
 
       {/* Holiday Management Section */}
-      <HolidayManagement />
+      <div className="print:hidden">
+        <HolidayManagement />
+      </div>
 
       {/* Product Management Section */}
-      <ProductManagement />
+      <div className="print:hidden">
+        <ProductManagement />
+      </div>
     </div>
   );
 };

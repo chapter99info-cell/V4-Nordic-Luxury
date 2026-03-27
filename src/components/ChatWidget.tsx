@@ -151,6 +151,34 @@ export default function ChatWidget() {
             } catch (error) {
               console.error("Error creating booking in chat:", error);
             }
+          } else if (call.name === 'getFinancialSummary') {
+            const args = call.args as any;
+            if (args.pin === '9999') {
+              try {
+                const summary = await apiService.getDailyFinancialSummary();
+                const summaryText = `Daily Financial Summary for ${format(new Date(), 'yyyy-MM-dd')}:\n` +
+                  `- Total Revenue: $${summary.totalRevenue}\n` +
+                  `- Total Bookings: ${summary.totalBookings}\n` +
+                  `- Cash Total: $${summary.cashTotal}\n` +
+                  `- Transfer Total: $${summary.transferTotal}`;
+                
+                // We need to send this back to the AI or just display it.
+                // The best way is to send it as a tool response, but for simplicity in this widget,
+                // we can just append it to the messages or let the AI know.
+                // However, the AI expects a tool response.
+                // Since our current aiChatService.sendMessage doesn't support tool responses yet,
+                // I'll just append a model message with the data.
+                setMessages(prev => [...prev, { role: 'model', text: summaryText }]);
+                setIsTyping(false);
+                return; // Stop here as we've handled it
+              } catch (error) {
+                console.error("Error fetching financial summary:", error);
+              }
+            } else {
+              setMessages(prev => [...prev, { role: 'model', text: "I'm sorry, but the Admin PIN you provided is incorrect. I cannot reveal sensitive financial data." }]);
+              setIsTyping(false);
+              return;
+            }
           }
         }
       }
@@ -166,7 +194,7 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-50">
+    <div className="fixed bottom-8 right-8 z-50 print:hidden">
       <AnimatePresence>
         {isOpen && (
           <motion.div

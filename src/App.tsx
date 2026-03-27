@@ -33,6 +33,7 @@ import { LoginPage } from './pages/admin/LoginPage';
 import { Navigation } from './components/Navigation';
 import { Toaster } from 'sonner';
 import { apiService } from './services/api';
+import { syncService } from './services/syncService';
 
 import { useTranslation } from './i18n/I18nContext';
 
@@ -55,12 +56,26 @@ function AppContent() {
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [adminPass, setAdminPass] = useState('');
 
-  // 🚀 Seed Initial Data (Only for Admin)
+  // 🚀 Initialize Sync Listeners
   useEffect(() => {
-    if (isAuthReady && (role === 'admin' || role === 'owner')) {
-      apiService.seedServices();
-      apiService.seedStaff();
-    }
+    syncService.initSyncListeners();
+  }, []);
+
+  // 🚀 Seed Initial Data (Only for Admin/Owner)
+  useEffect(() => {
+    const seedData = async () => {
+      if (isAuthReady && (role === 'admin' || role === 'owner' || localStorage.getItem('isAdmin') === 'true')) {
+        try {
+          console.log('🌱 Seeding initial data...');
+          await apiService.seedServices();
+          await apiService.seedStaff();
+          console.log('✅ Seeding complete.');
+        } catch (err) {
+          console.error('❌ Seeding failed:', err);
+        }
+      }
+    };
+    seedData();
   }, [isAuthReady, role]);
 
   // 🎨 Update CSS Variables when theme changes
@@ -162,7 +177,7 @@ function AppContent() {
   return (
     <div className="relative min-h-screen">
       {/* Language Switcher */}
-      <div className="fixed top-6 right-6 z-[60] flex gap-2">
+      <div className="fixed top-6 right-6 z-[60] flex gap-2 print:hidden">
         <button
           onClick={() => setLanguage('en')}
           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
@@ -221,7 +236,7 @@ function AppContent() {
         } />
       </Routes>
 
-      {!isAdminRoute && <Navigation />}
+      {!isAdminRoute && <div className="print:hidden"><Navigation /></div>}
       <ChatWidget />
 
       <AnimatePresence>

@@ -9,78 +9,78 @@ service cloud.firestore {
     // Document ID: userId (Firebase Auth UID)
     // Fields:
     //   - uid: string (required)
-    //   - email: string (required, email format)
+    //   - email: string (required, format: email)
     //   - displayName: string (optional)
     //   - photoURL: string (optional)
-    //   - role: string (required, 'admin' | 'staff' | 'client')
-    //   - createdAt: string (required, ISO 8601)
+    //   - role: string (required, enum: ["admin", "client"])
+    //   - createdAt: string (optional, format: date-time)
     //   - medicalAlerts: string (optional)
-    //   - painPoints: list (optional)
+    //   - painPoints: list (optional, items: string)
     //   - painLevel: number (optional)
+    //   - fcmToken: string (optional)
     //
     // Collection: bookings
-    // Document ID: auto-generated
+    // Document ID: bookingId
     // Fields:
-    //   - clientId: string (required)
+    //   - clientId: string (optional)
     //   - clientName: string (required)
-    //   - clientEmail: string (required)
+    //   - clientEmail: string (optional, format: email)
     //   - clientPhone: string (optional)
-    //   - serviceId: string (required)
+    //   - serviceId: string (optional)
     //   - serviceName: string (required)
-    //   - therapistId: string (required)
-    //   - therapistName: string (required)
-    //   - date: string (required, YYYY-MM-DD)
-    //   - startTime: string (required, HH:mm)
-    //   - endTime: string (required, HH:mm)
-    //   - duration: number (required)
-    //   - price: number (required)
-    //   - status: string (required, 'pending' | 'confirmed' | 'cancelled')
-    //   - paymentStatus: string (required, 'unpaid' | 'deposit-paid' | 'fully-paid')
-    //   - isWalkIn: bool (required)
-    //   - createdAt: string (required, ISO 8601)
-    //   - needsHealthFundRebate: bool (optional)
+    //   - therapistId: string (optional)
+    //   - therapistName: string (optional)
+    //   - date: string (required, format: date)
+    //   - startTime: string (required)
+    //   - endTime: string (optional)
+    //   - duration: number (optional)
+    //   - price: number (optional)
+    //   - status: string (required, enum: ["pending", "confirmed", "cancelled", "waiting-for-deposit", "payment_pending", "payment_rejected", "completed", "no-show"])
+    //   - paymentStatus: string (optional, enum: ["unpaid", "deposit-paid", "fully-paid", "pending-verification"])
+    //   - paymentMethod: string (optional, enum: ["Cash", "Card", "Transfer"])
+    //   - paymentSlipUrl: string (optional)
+    //   - isCashCollectedByOwner: bool (optional)
+    //   - depositAmountPaid: number (optional)
     //   - depositPaid: bool (optional)
     //   - intakeFormCompleted: bool (optional)
-    //   - source: string (required, 'AI Assistant' | 'Web' | 'Walk-in')
+    //   - isWalkIn: bool (optional)
+    //   - createdAt: string (optional, format: date-time)
+    //   - needsHealthFundRebate: bool (optional)
+    //   - source: string (optional, enum: ["AI Assistant", "Web", "Walk-in"])
+    //   - pricingLogic: map (optional)
     //
     // Collection: services
-    // Document ID: auto-generated
+    // Document ID: serviceId
     // Fields:
     //   - name: string (required)
-    //   - description: string (required)
+    //   - description: string (optional)
     //   - fullPrice: number (required)
     //   - depositAmount: number (required)
     //   - duration: number (required)
     //   - image: string (optional)
     //
     // Collection: staff
-    // Document ID: auto-generated
+    // Document ID: staffId
     // Fields:
     //   - name: string (required)
     //   - role: string (required)
+    //   - label: string (optional)
     //   - avatar: string (optional)
-    //   - specialties: list (optional)
-    //   - status: string (required, 'Working' | 'Off')
-    //
-    // Collection: holidays
-    // Document ID: auto-generated
-    // Fields:
-    //   - startDate: string (required, YYYY-MM-DD)
-    //   - endDate: string (required, YYYY-MM-DD)
-    //   - message: string (required)
-    //   - type: string (required, 'holiday' | 'emergency')
+    //   - imageUrl: string (optional)
+    //   - specialties: list (optional, items: string)
+    //   - status: string (required, enum: ["Working", "Off"])
     //   - isActive: bool (required)
-    //   - createdAt: timestamp (optional)
+    //   - createdAt: string (optional, format: date-time)
     //
     // Collection: products
-    // Document ID: auto-generated
+    // Document ID: productId
     // Fields:
     //   - name: string (required)
     //   - price: number (required)
-    //   - timestamp: timestamp (required)
+    //   - timestamp: string (optional, format: date-time)
     //
     // Collection: hesitation_logs
-    // Document ID: auto-generated
+    // Document ID: logId
     // Fields:
     //   - serviceId: string (required)
     //   - serviceName: string (required)
@@ -88,16 +88,35 @@ service cloud.firestore {
     //   - category: string (optional)
     //   - userId: string (optional)
     //   - userEmail: string (optional)
-    //   - timestamp: timestamp (required)
+    //   - timestamp: string (required, format: date-time)
     //   - durationBeforeLog: string (optional)
     //   - action: string (optional)
+    //
+    // Collection: notifications
+    // Document ID: notificationId
+    // Fields:
+    //   - userId: string (required)
+    //   - title: string (required)
+    //   - message: string (required)
+    //   - type: string (required, enum: ["booking_assigned", "booking_cancelled", "payment_received", "system"])
+    //   - bookingId: string (optional)
+    //   - isRead: bool (required)
+    //   - createdAt: string (required, format: date-time)
+    //
+    // Collection: shop_settings
+    // Document ID: security
+    // Fields:
+    //   - ownerPin: string (optional)
+    //   - ownerPrivateEmail: string (optional, format: email)
+    //   - lineNotifyToken: string (optional)
+    //   - promo: map (optional)
     //
     // ===============================================================
 
     // ===============================================================
     // Helper Functions
     // ===============================================================
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -108,20 +127,16 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (request.auth.token.email == "chapter99info@gmail.com" ||
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "chapter99info@gmail.com" && request.auth.token.email_verified == true));
     }
 
-    function isStaff() {
-      return isAuthenticated() &&
-        (request.auth.token.email == "ploy_staff@gmail.com" ||
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff'));
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
     }
 
-    function isAdminOrStaff() {
-      return isAdmin() || isStaff();
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
     }
 
     function isValidEmail(email) {
@@ -129,11 +144,11 @@ service cloud.firestore {
     }
 
     function isValidDateString(dateStr) {
-      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}.*");
     }
 
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
+    function isValidDateTimeString(dateTimeStr) {
+      return dateTimeStr is string && dateTimeStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*");
     }
 
     // ===============================================================
@@ -141,216 +156,158 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.uid is string &&
-             data.email is string && isValidEmail(data.email) &&
-             data.role in ['admin', 'staff', 'client'] &&
-             data.createdAt is string &&
-             (!('displayName' in data) || data.displayName is string) &&
-             (!('photoURL' in data) || data.photoURL is string) &&
-             (!('medicalAlerts' in data) || data.medicalAlerts is string) &&
-             (!('painPoints' in data) || data.painPoints is list) &&
-             (!('painLevel' in data) || data.painLevel is number) &&
-             (!('fcmToken' in data) || data.fcmToken is string);
-    }
-
-    function isValidNotification(data) {
-      return data.userId is string &&
-             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.message is string && data.message.size() > 0 && data.message.size() < 1000 &&
-             data.type in ['booking_assigned', 'booking_cancelled', 'payment_received', 'system'] &&
-             (!('bookingId' in data) || data.bookingId is string) &&
-             data.isRead is bool &&
-             data.createdAt is timestamp;
+      return hasRequiredFields(['uid', 'email', 'role']) &&
+        hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'medicalAlerts', 'painPoints', 'painLevel', 'fcmToken']) &&
+        data.uid is string &&
+        data.email is string && isValidEmail(data.email) &&
+        data.role in ['admin', 'client'] &&
+        (data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
+        (data.photoURL == null || (data.photoURL is string && data.photoURL.size() < 500)) &&
+        (data.createdAt == null || isValidDateTimeString(data.createdAt)) &&
+        (data.medicalAlerts == null || (data.medicalAlerts is string && data.medicalAlerts.size() < 1000)) &&
+        (data.painPoints == null || (data.painPoints is list && data.painPoints.size() < 20)) &&
+        (data.painLevel == null || data.painLevel is number) &&
+        (data.fcmToken == null || (data.fcmToken is string && data.fcmToken.size() < 500));
     }
 
     function isValidBooking(data) {
-      return data.clientName is string && data.clientName.size() > 0 && data.clientName.size() < 100 &&
-             data.clientEmail is string && isValidEmail(data.clientEmail) &&
-             data.serviceName is string &&
-             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
-             data.startTime is string && data.startTime.matches("^\\d{2}:\\d{2}$") &&
-             data.endTime is string && data.endTime.matches("^\\d{2}:\\d{2}$") &&
-             data.duration is number &&
-             data.status in ['pending', 'confirmed', 'cancelled', 'completed', 'waiting-for-deposit', 'payment_pending', 'payment_rejected', 'no-show'] &&
-             data.paymentStatus in ['unpaid', 'deposit-paid', 'fully-paid', 'pending-verification'] &&
-             (!('paymentMethod' in data) || data.paymentMethod in ['Cash', 'Card', 'Transfer']) &&
-             (!('paymentSlipUrl' in data) || data.paymentSlipUrl is string) &&
-             (!('isCashCollectedByOwner' in data) || data.isCashCollectedByOwner is bool) &&
-             (!('depositAmountPaid' in data) || data.depositAmountPaid is number) &&
-             data.isWalkIn is bool &&
-             data.createdAt is string &&
-             (!('clientId' in data) || data.clientId is string) &&
-             (!('clientPhone' in data) || data.clientPhone is string) &&
-             (!('serviceId' in data) || data.serviceId is string) &&
-             (!('therapistId' in data) || data.therapistId is string) &&
-             (!('therapistName' in data) || data.therapistName is string) &&
-             (!('price' in data) || data.price is number) &&
-             (!('depositPaid' in data) || data.depositPaid is bool) &&
-             (!('intakeFormCompleted' in data) || data.intakeFormCompleted is bool) &&
-             (!('needsHealthFundRebate' in data) || data.needsHealthFundRebate is bool) &&
-             (!('useCoconutOil' in data) || data.useCoconutOil is bool) &&
-             (!('source' in data) || data.source in ['AI Assistant', 'Web', 'Walk-in']) &&
-             (!('note' in data) || data.note is string) &&
-             (!('slotId' in data) || data.slotId is string) &&
-             (!('isReturning' in data) || data.isReturning is bool) &&
-             (!('pricingLogic' in data) || (
-               data.pricingLogic is map &&
-               data.pricingLogic.basePrice is number &&
-               data.pricingLogic.gstAmount is number &&
-               data.pricingLogic.totalPrice is number &&
-               data.pricingLogic.depositRequired is number &&
-               data.pricingLogic.currency is string
-             ));
+      return hasRequiredFields(['clientName', 'serviceName', 'date', 'startTime', 'status']) &&
+        hasOnlyAllowedFields(['clientId', 'clientName', 'clientEmail', 'clientPhone', 'serviceId', 'serviceName', 'therapistId', 'therapistName', 'date', 'startTime', 'endTime', 'duration', 'price', 'status', 'paymentStatus', 'paymentMethod', 'paymentSlipUrl', 'isCashCollectedByOwner', 'depositAmountPaid', 'depositPaid', 'intakeFormCompleted', 'isWalkIn', 'createdAt', 'needsHealthFundRebate', 'source', 'pricingLogic']) &&
+        data.clientName is string && data.clientName.size() > 0 && data.clientName.size() < 100 &&
+        data.serviceName is string && data.serviceName.size() > 0 && data.serviceName.size() < 100 &&
+        isValidDateString(data.date) &&
+        data.startTime is string && data.startTime.size() > 0 && data.startTime.size() < 20 &&
+        data.status in ["pending", "confirmed", "cancelled", "waiting-for-deposit", "payment_pending", "payment_rejected", "completed", "no-show"] &&
+        (data.clientId == null || data.clientId is string) &&
+        (data.clientEmail == null || isValidEmail(data.clientEmail)) &&
+        (data.clientPhone == null || (data.clientPhone is string && data.clientPhone.size() < 20)) &&
+        (data.serviceId == null || data.serviceId is string) &&
+        (data.therapistId == null || data.therapistId is string) &&
+        (data.therapistName == null || (data.therapistName is string && data.therapistName.size() < 100)) &&
+        (data.endTime == null || (data.endTime is string && data.endTime.size() < 20)) &&
+        (data.duration == null || data.duration is number) &&
+        (data.price == null || data.price is number) &&
+        (data.paymentStatus == null || data.paymentStatus in ["unpaid", "deposit-paid", "fully-paid", "pending-verification"]) &&
+        (data.paymentMethod == null || data.paymentMethod in ["Cash", "Card", "Transfer"]) &&
+        (data.paymentSlipUrl == null || (data.paymentSlipUrl is string && data.paymentSlipUrl.size() < 500)) &&
+        (data.isCashCollectedByOwner == null || data.isCashCollectedByOwner is bool) &&
+        (data.depositAmountPaid == null || data.depositAmountPaid is number) &&
+        (data.depositPaid == null || data.depositPaid is bool) &&
+        (data.intakeFormCompleted == null || data.intakeFormCompleted is bool) &&
+        (data.isWalkIn == null || data.isWalkIn is bool) &&
+        (data.createdAt == null || isValidDateTimeString(data.createdAt)) &&
+        (data.needsHealthFundRebate == null || data.needsHealthFundRebate is bool) &&
+        (data.source == null || data.source in ["AI Assistant", "Web", "Walk-in"]) &&
+        (data.pricingLogic == null || data.pricingLogic is map);
     }
 
     function isValidService(data) {
-      return data.name is string &&
-             data.description is string &&
-             data.fullPrice is number &&
-             data.depositAmount is number &&
-             data.duration is number &&
-             (!('image' in data) || data.image is string) &&
-             (!('isActive' in data) || data.isActive is bool) &&
-             (!('rates' in data) || data.rates is map);
+      return hasRequiredFields(['name', 'fullPrice', 'depositAmount', 'duration']) &&
+        hasOnlyAllowedFields(['name', 'description', 'fullPrice', 'depositAmount', 'duration', 'image']) &&
+        data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+        data.fullPrice is number && data.fullPrice >= 0 &&
+        data.depositAmount is number && data.depositAmount >= 0 &&
+        data.duration is number && data.duration > 0 &&
+        (data.description == null || (data.description is string && data.description.size() < 1000)) &&
+        (data.image == null || (data.image is string && data.image.size() < 500));
     }
 
     function isValidStaff(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.role is string && data.role.size() > 0 && data.role.size() < 100 &&
-             (!('label' in data) || data.label is string) &&
-             (!('avatar' in data) || data.avatar is string) &&
-             (!('imageUrl' in data) || data.imageUrl is string) &&
-             (!('specialties' in data) || data.specialties is list) &&
-             data.status in ['Working', 'Off'] &&
-             data.isActive is bool &&
-             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string);
-    }
-
-    function isValidHoliday(data) {
-      return hasOnlyAllowedFields(['startDate', 'endDate', 'message', 'type', 'isActive', 'createdAt']) &&
-             data.startDate is string && data.startDate.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
-             data.endDate is string && data.endDate.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
-             data.message is string && data.message.size() > 0 && data.message.size() < 500 &&
-             data.type in ['holiday', 'emergency'] &&
-             data.isActive is bool &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
+      return hasRequiredFields(['name', 'role', 'status', 'isActive']) &&
+        hasOnlyAllowedFields(['name', 'role', 'label', 'avatar', 'imageUrl', 'specialties', 'status', 'isActive', 'createdAt']) &&
+        data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+        data.role is string && data.role.size() > 0 && data.role.size() < 100 &&
+        data.status in ["Working", "Off"] &&
+        data.isActive is bool &&
+        (data.label == null || (data.label is string && data.label.size() < 100)) &&
+        (data.avatar == null || (data.avatar is string && data.avatar.size() < 500)) &&
+        (data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() < 500)) &&
+        (data.specialties == null || (data.specialties is list && data.specialties.size() < 20)) &&
+        (data.createdAt == null || isValidDateTimeString(data.createdAt));
     }
 
     function isValidProduct(data) {
-      return hasOnlyAllowedFields(['name', 'price', 'timestamp']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.price is number && data.price >= 0 &&
-             data.timestamp is timestamp;
-    }
-
-    function isValidSlot(data) {
-      return data.bookingId is string &&
-             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
-             data.startTime is string && data.startTime.matches("^\\d{2}:\\d{2}$") &&
-             data.endTime is string && data.endTime.matches("^\\d{2}:\\d{2}$") &&
-             data.status in ['pending', 'confirmed', 'cancelled', 'blocked'];
+      return hasRequiredFields(['name', 'price']) &&
+        hasOnlyAllowedFields(['name', 'price', 'timestamp']) &&
+        data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+        data.price is number && data.price >= 0 &&
+        (data.timestamp == null || isValidDateTimeString(data.timestamp));
     }
 
     function isValidHesitationLog(data) {
-      return hasOnlyAllowedFields(['serviceId', 'serviceName', 'price', 'category', 'userId', 'userEmail', 'timestamp', 'durationBeforeLog', 'action']) &&
-             data.serviceId is string &&
-             data.serviceName is string &&
-             data.timestamp is timestamp &&
-             (!('price' in data) || data.price is number) &&
-             (!('category' in data) || data.category is string) &&
-             (!('userId' in data) || data.userId is string) &&
-             (!('userEmail' in data) || data.userEmail is string) &&
-             (!('durationBeforeLog' in data) || data.durationBeforeLog is string) &&
-             (!('action' in data) || data.action is string);
+      return hasRequiredFields(['serviceId', 'serviceName', 'timestamp']) &&
+        hasOnlyAllowedFields(['serviceId', 'serviceName', 'price', 'category', 'userId', 'userEmail', 'timestamp', 'durationBeforeLog', 'action']) &&
+        data.serviceId is string &&
+        data.serviceName is string &&
+        isValidDateTimeString(data.timestamp) &&
+        (data.price == null || data.price is number) &&
+        (data.category == null || data.category is string) &&
+        (data.userId == null || data.userId is string) &&
+        (data.userEmail == null || isValidEmail(data.userEmail)) &&
+        (data.durationBeforeLog == null || data.durationBeforeLog is string) &&
+        (data.action == null || data.action is string);
     }
 
-    function isValidWebBooking(data) {
-      return (data.name is string || data.clientName is string) &&
-             data.date is string &&
-             (data.startTime is string || data.start is string) &&
-             data.createdAt is string;
+    function isValidNotification(data) {
+      return hasRequiredFields(['userId', 'title', 'message', 'type', 'isRead', 'createdAt']) &&
+        hasOnlyAllowedFields(['userId', 'title', 'message', 'type', 'bookingId', 'isRead', 'createdAt']) &&
+        data.userId is string &&
+        data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+        data.message is string && data.message.size() > 0 && data.message.size() < 1000 &&
+        data.type in ["booking_assigned", "booking_cancelled", "payment_received", "system"] &&
+        data.isRead is bool &&
+        isValidDateTimeString(data.createdAt) &&
+        (data.bookingId == null || data.bookingId is string);
     }
 
     // ===============================================================
     // Rules
     // ===============================================================
 
-    match /web_bookings/{bookingId} {
-      allow read: if isAdminOrStaff();
-      allow create: if isValidWebBooking(request.resource.data);
-      allow update: if isAdminOrStaff() && isValidWebBooking(request.resource.data);
-      allow delete: if isAdminOrStaff();
-    }
-
-    match /public_slots/{document=**} {
-      allow read: if true;
-      allow create: if isAuthenticated() || isValidSlot(request.resource.data);
-      allow update, delete: if isAdminOrStaff();
-    }
-
-    match /test/connection {
-      allow read: if true;
-    }
-
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdminOrStaff();
-      allow create: if isAuthenticated() && isOwner(userId) && 
-                      isValidUser(request.resource.data) && 
-                      (request.resource.data.role == 'client' || isAdmin());
-      allow update: if isAuthenticated() && 
-                      isValidUser(request.resource.data) && 
-                      ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin());
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) && request.resource.data.role == 'client' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /bookings/{bookingId} {
-      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isAdminOrStaff());
-      allow create: if (isAuthenticated() || request.resource.data.get('source', '') in ['AI Assistant', 'Web']) && 
-                      isValidBooking(request.resource.data);
-      allow update: if isAuthenticated() && 
-                      (resource.data.clientId == request.auth.uid || isAdminOrStaff()) &&
-                      isValidBooking(request.resource.data);
+      allow read: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin());
+      allow create: if isAuthenticated() && isValidBooking(request.resource.data) && (request.resource.data.clientId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && isValidBooking(request.resource.data) && (isOwner(resource.data.clientId) || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /services/{serviceId} {
-      allow read: if true;
+      allow read: if true; // Publicly readable
       allow write: if isAdmin() && isValidService(request.resource.data);
     }
 
     match /staff/{staffId} {
-      allow read: if true;
-      allow create: if isAdmin() && isValidStaff(request.resource.data);
-      allow update: if isAdminOrStaff() && isValidStaff(request.resource.data);
-      allow delete: if isAdmin();
-    }
-
-    match /holidays/{holidayId} {
-      allow read: if true;
-      allow write: if isAdmin() && isValidHoliday(request.resource.data);
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin() && isValidStaff(request.resource.data);
     }
 
     match /products/{productId} {
-      allow read: if true;
+      allow read: if true; // Publicly readable
       allow write: if isAdmin() && isValidProduct(request.resource.data);
     }
 
     match /hesitation_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isValidHesitationLog(request.resource.data);
+      allow create: if isAuthenticated() && isValidHesitationLog(request.resource.data);
+      allow update, delete: if isAdmin();
     }
 
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && 
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAdmin() && isValidNotification(request.resource.data);
+      allow update: if (isOwner(resource.data.userId) || isAdmin()) && isValidNotification(request.resource.data);
+      allow delete: if isAdmin();
     }
 
-    match /shop_settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
+    match /shop_settings/security {
+      allow read, write: if isAdmin();
     }
 
     // Default deny

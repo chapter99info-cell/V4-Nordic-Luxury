@@ -6,6 +6,7 @@ import { Service } from '../types';
 import { CustomerReviews } from './CustomerReviews';
 import { QuickBookingForm } from './QuickBookingForm';
 import { ServiceGallery } from './ServiceGallery';
+import PremiumVideoPlayer from './PremiumVideoPlayer';
 
 interface LandingPageProps {
   onBookNow: (service?: Service, withCoconut?: boolean, duration?: number) => void;
@@ -75,7 +76,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <p className="text-earth/70 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
             {config.landingPageContent.hero.subtitle}
           </p>
-          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-4">
+          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-4 print:hidden">
             <button 
               onClick={() => onBookNow()}
               className="w-full md:w-auto bg-primary text-white px-10 py-5 rounded-full text-sm font-bold uppercase tracking-[0.2em] hover:bg-sage transition-all shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95"
@@ -131,16 +132,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 <div className="relative aspect-video rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white bg-beige/10">
                   {config.promoVideo ? (
-                    <video 
-                      autoPlay 
-                      loop 
-                      muted 
-                      playsInline
-                      className="w-full h-full object-cover"
-                    >
-                      <source src={config.promoVideo} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
+                    <PremiumVideoPlayer videoSrc={config.promoVideo} />
                   ) : (
                     <img 
                       src={config.heroImage} 
@@ -148,7 +140,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       className="w-full h-full object-cover"
                     />
                   )}
-                  <div className="absolute inset-0 bg-primary/10 group-hover:bg-transparent transition-colors duration-500" />
                 </div>
                 
                 {/* Floating Badge */}

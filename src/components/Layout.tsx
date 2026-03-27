@@ -69,7 +69,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans">
       {/* Sidebar for Admin */}
       {isAdminView && (
-        <aside className="hidden md:flex w-72 bg-section border-r border-beige/20 flex-col p-8 space-y-12 shrink-0">
+        <aside className="hidden md:flex w-72 bg-section border-r border-beige/20 flex-col p-8 space-y-12 shrink-0 print:hidden">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full border-2 border-primary/10 overflow-hidden bg-white shadow-sm shrink-0">
               <img src={shopConfig?.logo} alt={`${shopConfig?.name} Logo`} className="w-full h-full object-cover" />
@@ -128,7 +128,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-20 border-b border-beige/20 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-40">
+        <header className="h-20 border-b border-beige/20 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-40 print:hidden">
           <div className="flex items-center gap-4 flex-1 max-w-md">
             {!isAdminView ? (
               <div className="flex items-center gap-4 mr-4">
@@ -208,7 +208,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         </header>
 
         {/* Page Content */}
-        <div className="p-6 max-w-7xl mx-auto w-full pb-24 md:pb-6">
+        <div className="p-6 max-w-7xl mx-auto w-full pb-24 md:pb-6 print:p-0 print:max-w-none">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 10 }}

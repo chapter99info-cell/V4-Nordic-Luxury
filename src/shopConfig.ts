@@ -54,7 +54,7 @@ export interface ShopConfig {
 }
 
 export const shopConfig: ShopConfig = {
-  shopId: "SHOP01",
+  shopId: import.meta.env.VITE_SHOP_ID || "SHOP01",
   name: "MIRA ROYALE V4",
   description: "Traditional Thai healing meets modern clinical precision. Experience the art of massage in a sanctuary designed for your recovery.",
   location: "Altona, Melbourne, VIC 3018",

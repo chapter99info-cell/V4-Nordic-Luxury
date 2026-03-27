@@ -57,7 +57,7 @@ export const V4CoreFeatureShowcase: React.FC = () => {
           <p className="text-xl mt-2 text-stone-500 font-medium">จัดการร้านนวดให้ลื่นไหล สบายตา สบายใจ</p>
         </div>
         <div className="flex items-center gap-4 bg-white/50 backdrop-blur-md p-3 px-6 rounded-full border border-white shadow-sm">
-          <span className="text-lg font-bold text-[#006D77]">สวัสดีค่ะ คุณป้าเจ้าของร้าน</span>
+          <span className="text-lg font-bold text-[#006D77]">สวัสดีค่ะ คุณพี่เจ้าของร้าน</span>
           <div className="w-14 h-14 rounded-2xl bg-[#006D77] flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-[#006D77]/20">
             P
           </div>

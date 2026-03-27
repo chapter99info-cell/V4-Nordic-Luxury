@@ -17,6 +17,8 @@ import {
 } from 'firebase/firestore';
 import { shopConfig } from '../config/shopConfig';
 import { sendLineNotification } from './notificationService';
+import { offlineService } from './offlineService';
+import { toast } from 'sonner';
 
 /**
  * API Service Layer
@@ -28,10 +30,17 @@ export const apiService = {
     const path = 'services';
     try {
       const snapshot = await getDocs(collection(db, path));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+      const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+      if (services.length > 0) {
+        offlineService.cacheServices(services);
+      }
+      return services;
     } catch (error) {
+      if (!offlineService.isOnline()) {
+        return offlineService.getCachedServices();
+      }
       handleFirestoreError(error, OperationType.GET, path);
-      return [];
+      return offlineService.getCachedServices();
     }
   },
 
@@ -51,10 +60,17 @@ export const apiService = {
     const path = 'staff';
     try {
       const snapshot = await getDocs(collection(db, path));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+      const staff = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+      if (staff.length > 0) {
+        offlineService.cacheStaff(staff);
+      }
+      return staff;
     } catch (error) {
+      if (!offlineService.isOnline()) {
+        return offlineService.getCachedStaff();
+      }
       handleFirestoreError(error, OperationType.GET, path);
-      return [];
+      return offlineService.getCachedStaff();
     }
   },
 
@@ -63,21 +79,34 @@ export const apiService = {
     try {
       const staffData: Omit<Staff, 'id'>[] = [
         {
-          name: 'Senior Therapist A',
+          name: 'Keng',
           role: 'Senior Therapist',
           avatar: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=200&h=200',
           imageUrl: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=200&h=200',
-          specialties: ['Remedial', 'Deep Tissue'],
+          specialties: ['Remedial', 'Deep Tissue', 'Thai Massage'],
           status: 'Working',
-          isActive: true
+          isActive: true,
+          createdAt: new Date().toISOString()
         },
         {
-          name: 'Therapist B',
+          name: 'Jenny',
           role: 'Massage Therapist',
           avatar: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&q=80&w=200&h=200',
-          specialties: ['Swedish', 'Aromatherapy'],
+          imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&q=80&w=200&h=200',
+          specialties: ['Swedish', 'Aromatherapy', 'Foot Massage'],
           status: 'Working',
-          isActive: true
+          isActive: true,
+          createdAt: new Date().toISOString()
+        },
+        {
+          name: 'Lisa',
+          role: 'Senior Therapist',
+          avatar: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=200&h=200',
+          imageUrl: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=200&h=200',
+          specialties: ['Hot Stone', 'Pregnancy Massage'],
+          status: 'Working',
+          isActive: true,
+          createdAt: new Date().toISOString()
         }
       ];
 
@@ -87,6 +116,7 @@ export const apiService = {
         const snapshot = await getDocs(q);
         if (snapshot.empty) {
           await addDoc(collection(db, path), s);
+          console.log(`Seeded staff: ${s.name}`);
         }
       }
     } catch (error) {
@@ -112,6 +142,13 @@ export const apiService = {
   createBooking: async (booking: Omit<Booking, 'id'>): Promise<Booking> => {
     const path = 'bookings';
     const slotsPath = 'public_slots';
+
+    // Check online status
+    if (!offlineService.isOnline()) {
+      const offlineBooking = offlineService.saveBookingOffline(booking);
+      return offlineBooking as any as Booking;
+    }
+
     try {
       // [ป้องกันข้อมูลซ้ำ] เช็คว่ามีการจองชื่อ/เบอร์นี้ ในเวลาเดิมซ้ำไหม (ป้องกันการกดรัว)
       if (booking.clientPhone) {
@@ -191,7 +228,12 @@ export const apiService = {
       apiService.triggerNotifications(createdBooking, now, isReturning);
 
       return createdBooking;
-    } catch (error) {
+    } catch (error: any) {
+      // If Firestore operation fails due to network, try saving offline
+      if (error?.message?.includes('offline') || error?.code === 'unavailable') {
+        const offlineBooking = offlineService.saveBookingOffline(booking);
+        return offlineBooking as any as Booking;
+      }
       handleFirestoreError(error, OperationType.CREATE, path);
       throw error;
     }
@@ -304,6 +346,40 @@ export const apiService = {
     }
   },
 
+  getDailyFinancialSummary: async (): Promise<{ totalRevenue: number; totalBookings: number; cashTotal: number; transferTotal: number }> => {
+    const path = 'bookings';
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      const q = query(collection(db, path), where('date', '==', today));
+      const snapshot = await getDocs(q);
+      const bookings = snapshot.docs.map(d => d.data() as Booking);
+      
+      let totalRevenue = 0;
+      let cashTotal = 0;
+      let transferTotal = 0;
+      
+      bookings.forEach(b => {
+        const price = b.price || 0;
+        totalRevenue += price;
+        if (b.paymentMethod === 'Cash') {
+          cashTotal += price;
+        } else {
+          transferTotal += price;
+        }
+      });
+
+      return {
+        totalRevenue,
+        totalBookings: bookings.length,
+        cashTotal,
+        transferTotal
+      };
+    } catch (error) {
+      console.error("Error fetching daily financial summary:", error);
+      return { totalRevenue: 0, totalBookings: 0, cashTotal: 0, transferTotal: 0 };
+    }
+  },
+
   getRecentBookings: async (limitCount: number = 5): Promise<Booking[]> => {
     const path = 'bookings';
     try {
@@ -361,7 +437,7 @@ export const apiService = {
   },
 
   appendToGoogleSheets: async (sheetPayload: any) => {
-    const url = import.meta.env?.VITE_SHEETS_WEBHOOK_URL;
+    const url = import.meta.env?.VITE_SHEETS_WEBHOOK_URL || 'https://script.google.com/macros/s/AKfycbyy5PaAAflJzCGGz6U7TdszDHPv82NC45Eo3kzHk4kbGkVFVn2tiNYn2SGfrknM0zNBbA/exec';
     if (!url) {
       console.info('[appendToGoogleSheets] VITE_SHEETS_WEBHOOK_URL not set; skip.', sheetPayload);
       return { skipped: true };

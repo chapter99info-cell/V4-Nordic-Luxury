@@ -160,8 +160,8 @@ export const shopConfig: ShopConfig = {
   },
   aiPersona: {
     name: "Mira",
-    language: ["th", "en"],
-    greetingMsg: "สวัสดีค่ะ ยินดีต้อนรับสู่ Mira Royale วันนี้ต้องการเช็กคิวว่างหรือจองบริการดีคะ?"
+    language: ["en", "th"],
+    greetingMsg: "Sawasdee kha! Welcome to Mira Royale. I am Mira, your personal assistant. How may I assist you today?"
   },
   services: [
     {

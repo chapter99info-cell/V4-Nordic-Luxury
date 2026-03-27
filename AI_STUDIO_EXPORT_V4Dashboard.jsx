@@ -121,8 +121,23 @@ export const V4Dashboard = () => {
       };
 
       // บันทึกคิวลูกค้า
-      await apiService.createBooking(newBookingData);
+      const created = await apiService.createBooking(newBookingData);
       
+      // Sync to Google Sheets
+      await apiService.appendToGoogleSheets({
+        date: newBookingData.date,
+        client: newBookingData.clientName,
+        phone: newBookingData.clientPhone || 'N/A',
+        email: newBookingData.clientEmail || 'N/A',
+        service: newBookingData.serviceName,
+        price: newBookingData.price,
+        note: newBookingData.note || '',
+        status: 'Confirmed',
+        source: 'Walk-in',
+        timeSlot: `${newBookingData.startTime} - ${newBookingData.endTime}`,
+        therapist: newBookingData.therapistName
+      });
+
       // บันทึกคิวทำความสะอาดอัตโนมัติ (15 นาที)
       await addDoc(collection(db, 'bookings'), {
         ...newBookingData,

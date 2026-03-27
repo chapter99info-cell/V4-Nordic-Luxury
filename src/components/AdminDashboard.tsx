@@ -5,7 +5,7 @@ import {
   Search, ChevronRight, Clock, User, 
   Percent, RefreshCw,
   CheckCircle2, AlertTriangle, X as LucideX,
-  TrendingUp, UserCheck, Activity
+  TrendingUp, UserCheck, Activity, Printer
 } from 'lucide-react';
 import { 
   collection, query, onSnapshot, where, doc, updateDoc, 
@@ -167,7 +167,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-24 right-6 z-50 p-4 rounded-2xl flex items-center gap-3 border shadow-2xl ${
+            className={`fixed top-24 right-6 z-50 p-4 rounded-2xl flex items-center gap-3 border shadow-2xl print:hidden ${
               actionFeedback.status === 'success' 
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
                 : 'bg-rose-50 border-rose-200 text-rose-700'
@@ -183,7 +183,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
       </AnimatePresence>
 
       {/* Header & Quick Actions */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-beige/10">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-beige/10 print:mb-2 print:p-4 print:shadow-none">
         <div>
           <h1 className="text-4xl font-serif font-bold text-primary mb-2">
             {greeting}, {auth.currentUser?.displayName?.split(' ')[0] || 'Owner'}
@@ -193,7 +193,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4 print:hidden">
+          <button 
+            onClick={() => window.print()}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-earth/10 text-earth hover:bg-earth hover:text-white px-6 py-4 rounded-full font-bold text-sm transition-all"
+          >
+            <Printer size={20} />
+            <span>Print Daily Schedule</span>
+          </button>
           <div className="flex items-center gap-4 bg-section/50 px-6 py-3 rounded-full border border-beige/20">
             <div className="flex items-center gap-2">
               <Percent className="text-secondary" size={20} />
@@ -217,7 +224,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
       </div>
 
       {/* Quick Stats Grid */}
-      <div className={`grid grid-cols-1 ${isOwnerOrAdmin ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+      <div className={`grid grid-cols-1 ${isOwnerOrAdmin ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6 print:hidden`}>
         {isOwnerOrAdmin && (
           <motion.div 
             whileHover={{ y: -5 }}
@@ -265,7 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Live Staff Status */}
-        <div className="lg:col-span-1 bg-white p-8 rounded-[3rem] border border-beige/20 shadow-sm">
+        <div className="lg:col-span-1 bg-white p-8 rounded-[3rem] border border-beige/20 shadow-sm print:hidden">
           <div className="flex items-center justify-between mb-8">
             <h4 className="font-serif font-bold text-2xl text-primary">Live Staff Status</h4>
             <div className="flex items-center gap-2 text-xs font-bold text-earth/30 uppercase tracking-widest">
@@ -330,7 +337,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
               <h4 className="font-serif font-bold text-2xl text-primary">Upcoming Bookings</h4>
               <p className="text-earth/40 text-sm font-medium">Today's schedule overview</p>
             </div>
-            <div className="relative">
+            <div className="relative print:hidden">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-earth/30" size={18} />
               <input 
                 type="text" 
@@ -350,7 +357,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
                   <th className="px-8 py-4">Client</th>
                   <th className="px-8 py-4">Service & Staff</th>
                   <th className="px-8 py-4">Status</th>
-                  <th className="px-8 py-4 text-right">Action</th>
+                  <th className="px-8 py-4 text-right print:hidden">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-beige/10">
@@ -407,7 +414,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
                             {booking.status}
                           </span>
                         </td>
-                        <td className="px-8 py-6 text-right">
+                        <td className="px-8 py-6 text-right print:hidden">
                           <button className="p-2 text-earth/30 hover:text-primary hover:bg-primary/5 rounded-xl transition-all">
                             <ChevronRight size={20} />
                           </button>
