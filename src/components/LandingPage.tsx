@@ -1,32 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { shopConfig as defaultShopConfig, ShopConfig } from '../config/shopConfig';
 import { motion } from 'motion/react';
-import { Clock, DollarSign, ChevronRight, MapPin, Phone, Instagram, Facebook, Calendar, Grid, BarChart2, MessageSquare, Info, Sparkles, Heart, Award, ShieldCheck, Users } from 'lucide-react';
+import { Clock, DollarSign, ChevronRight, MapPin, Phone, Instagram, Calendar, Grid, BarChart2, MessageSquare, Info, Sparkles, Heart, Award, ShieldCheck, Users } from 'lucide-react';
 import { Service } from '../types';
 import { CustomerReviews } from './CustomerReviews';
 import { QuickBookingForm } from './QuickBookingForm';
-import { ServiceGallery } from './ServiceGallery';
 import PremiumVideoPlayer from './PremiumVideoPlayer';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface LandingPageProps {
   onBookNow: (service?: Service, withCoconut?: boolean, duration?: number) => void;
-  setActiveTab: (tab: string) => void;
-  setView: (view: 'landing' | 'app') => void;
   onStaffLogin: () => void;
   config?: ShopConfig;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ 
   onBookNow, 
-  setActiveTab, 
-  setView, 
   onStaffLogin,
   config = defaultShopConfig 
 }) => {
-  const handleNav = (tab: string) => {
-    setActiveTab(tab);
-    setView('app');
-  };
+  const [isBookingOpen, setIsBookingOpen] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'booking'), (docSnap) => {
+      if (docSnap.exists()) {
+        setIsBookingOpen(docSnap.data().isOpen);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const features = config.featureFlags;
 
@@ -76,12 +79,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <p className="text-earth/70 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
             {config.landingPageContent.hero.subtitle}
           </p>
-          <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-4 print:hidden">
+            <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-4 print:hidden">
             <button 
-              onClick={() => onBookNow()}
-              className="w-full md:w-auto bg-primary text-white px-10 py-5 rounded-full text-sm font-bold uppercase tracking-[0.2em] hover:bg-sage transition-all shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95"
+              onClick={() => isBookingOpen && onBookNow()}
+              disabled={!isBookingOpen}
+              className={`w-full md:w-auto px-10 py-5 rounded-full text-sm font-bold uppercase tracking-[0.2em] transition-all shadow-2xl ${
+                isBookingOpen 
+                  ? 'bg-primary text-white hover:bg-sage shadow-primary/30 hover:scale-105 active:scale-95' 
+                  : 'bg-zinc-400 text-white/80 cursor-not-allowed grayscale'
+              }`}
             >
-              {config.landingPageContent.hero.cta}
+              {isBookingOpen ? config.landingPageContent.hero.cta : 'FULLY BOOKED TODAY'}
             </button>
             <a href="#services" className="text-primary font-bold uppercase tracking-widest text-xs hover:underline underline-offset-8 px-6 py-4">
               Explore Services
@@ -111,13 +119,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {config.landingPageContent.atmosphere.description}
                 </p>
                 <div className="flex items-center gap-6 pt-4">
-                  <div className="flex -space-x-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="w-12 h-12 rounded-full border-2 border-white overflow-hidden">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 10}`} alt="User" className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
                   <p className="text-xs font-bold text-primary uppercase tracking-widest">
                     Trusted by <span className="text-sage">500+</span> monthly guests
                   </p>
@@ -250,24 +251,105 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       )}
 
-      {/* Service Gallery Section */}
+      {/* Services Section (V5 Modern Slide) */}
       {features.showServices && (
-        <section id="services" className="py-24 bg-section">
+        <section id="services" className="py-24 bg-background overflow-hidden">
           <div className="max-w-7xl mx-auto px-8">
-            <div className="text-center mb-16 space-y-4">
-              <span className="text-sage text-[10px] font-bold uppercase tracking-[0.4em] block">
+            <div className="text-center mb-20 space-y-6">
+              <span className="text-sage text-xs font-bold uppercase tracking-[0.5em] block">
                 {config.landingPageContent.services.subtitle}
               </span>
-              <h2 className="text-5xl font-serif font-bold text-primary">
+              <h2 className="text-6xl md:text-7xl font-serif font-bold text-primary tracking-tight">
                 {config.landingPageContent.services.title}
               </h2>
-              <p className="mt-4 text-earth/40 text-sm font-medium uppercase tracking-widest flex items-center justify-center gap-2">
-                <span className="w-8 h-[1px] bg-beige" />
-                HICAPS Available for All Treatments
-                <span className="w-8 h-[1px] bg-beige" />
-              </p>
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <div className="h-[2px] w-12 bg-primary/20" />
+                <p className="text-primary font-black text-lg md:text-xl uppercase tracking-[0.3em]">
+                  HICAPS AVAILABLE FOR ALL TREATMENTS
+                </p>
+                <div className="h-[2px] w-12 bg-primary/20" />
+              </div>
             </div>
-            <ServiceGallery onSelectService={onBookNow} />
+            
+            {/* Horizontal Slide / Carousel */}
+            <div className="relative">
+              <motion.div 
+                className="flex gap-8 overflow-x-auto pb-12 snap-x no-scrollbar cursor-grab active:cursor-grabbing"
+                drag="x"
+                dragConstraints={{ left: -1000, right: 0 }} // Simple constraint, better to calculate based on content width
+              >
+                {config.services.map((service) => (
+                  <motion.div
+                    key={service.id}
+                    className="min-w-[320px] md:min-w-[450px] snap-center bg-white rounded-[3rem] overflow-hidden shadow-2xl shadow-primary/5 border border-primary/5 group flex flex-col h-full"
+                  >
+                    <div className="aspect-[4/3] overflow-hidden relative">
+                      <img 
+                        src={service.image} 
+                        alt={service.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                        referrerPolicy="no-referrer"
+                      />
+                      {service.badge && (
+                        <div className="absolute top-6 left-6 bg-primary text-white px-4 py-2 rounded-full text-[10px] font-black tracking-widest shadow-lg">
+                          {service.badge}
+                        </div>
+                      )}
+                      <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-xl border border-primary/10">
+                        <span className="text-3xl font-black text-primary">$ {service.fullPrice}</span>
+                      </div>
+                    </div>
+                    <div className="p-10 flex flex-col flex-1 space-y-6">
+                      <div className="space-y-2">
+                        <h3 className="text-3xl md:text-4xl font-serif font-bold text-primary leading-tight">
+                          {service.name}
+                        </h3>
+                        <p className="text-sage text-xs font-bold uppercase tracking-widest">
+                          {service.duration} Minutes • {service.type}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <p className="text-earth/70 text-lg leading-relaxed font-medium">
+                          {service.description}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(service.rates).map(([mins, price]) => (
+                            <div key={mins} className="px-4 py-2 bg-beige/30 rounded-xl border border-primary/5">
+                              <span className="text-primary font-black text-lg">{mins}m - ${price}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => isBookingOpen && onBookNow(service)}
+                        disabled={!isBookingOpen}
+                        className={`w-full py-6 rounded-[2rem] text-xl font-black uppercase tracking-[0.2em] transition-all shadow-xl ${
+                          isBookingOpen 
+                            ? 'bg-primary text-white hover:bg-sage shadow-primary/20 hover:scale-[1.02] active:scale-95' 
+                            : 'bg-zinc-400 text-white/80 cursor-not-allowed'
+                        }`}
+                      >
+                        {isBookingOpen ? 'BOOK NOW' : 'FULLY BOOKED'}
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+              
+              {/* Scroll Hint */}
+              <div className="flex justify-center gap-2 mt-4">
+                <div className="w-12 h-1 bg-primary/20 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-primary"
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  />
+                </div>
+                <span className="text-[10px] font-bold text-primary/40 uppercase tracking-widest">Swipe to explore</span>
+              </div>
+            </div>
           </div>
         </section>
       )}
@@ -276,7 +358,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {features.showReviews && <CustomerReviews />}
 
       {/* Quick Booking Form Section */}
-      {features.showQuickBooking && <QuickBookingForm />}
+      {features.showQuickBooking && <QuickBookingForm isBookingOpen={isBookingOpen} />}
 
       {/* Footer */}
       <footer id="contact" className="bg-primary text-white py-20 px-6 mt-20">
@@ -302,9 +384,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex gap-4">
               <a href="#" className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center hover:bg-white hover:text-primary transition-all">
                 <Instagram size={24} />
-              </a>
-              <a href="#" className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center hover:bg-white hover:text-primary transition-all">
-                <Facebook size={24} />
               </a>
             </div>
             <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] flex items-center gap-4">

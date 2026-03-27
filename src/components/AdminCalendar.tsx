@@ -156,13 +156,13 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
         endTime: newEndTime
       });
 
-      toast.success('ย้ายคิวสำเร็จ', {
+      toast.success('ย้ายคิวสำเร็จแล้วค่ะ', {
         icon: <CheckCircle2 className="text-emerald-500" size={18} />,
         className: 'bg-emerald-50 border-emerald-200 text-emerald-900 font-bold'
       });
     } catch (error) {
       console.error("Failed to update booking", error);
-      toast.error('เกิดข้อผิดพลาดในการย้ายคิว');
+      toast.error('เกิดข้อผิดพลาดในการย้ายคิวค่ะ');
     } finally {
       setIsUpdating(false);
     }
@@ -205,8 +205,8 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
       {/* Header Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h2 className="text-4xl font-serif font-bold text-primary mb-2">ตารางนัดหมาย</h2>
-          <p className="text-earth/50 text-sm font-medium">จัดการคิวงานและพนักงานแบบเรียลไทม์</p>
+          <h2 className="text-4xl font-serif font-bold text-primary mb-2">ตารางนัดหมายค่ะ</h2>
+          <p className="text-earth/50 text-sm font-medium">จัดการคิวงานและพนักงานแบบเรียลไทม์ค่ะ</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 bg-white p-2 rounded-[2rem] border-2 border-beige/20 shadow-xl">
@@ -214,7 +214,7 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
             onClick={() => setSelectedDate(new Date())}
             className="px-6 py-2 rounded-full bg-section text-primary font-black text-xs uppercase tracking-widest hover:bg-beige/30 transition-all"
           >
-            วันนี้
+            วันนี้ค่ะ
           </button>
           <div className="flex items-center gap-1">
             <button 
@@ -241,7 +241,7 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
           <button 
             onClick={() => window.location.reload()}
             className="p-3 rounded-full hover:bg-section transition-all text-primary/40 hover:text-primary"
-            title="รีเฟรชหน้าจอ"
+            title="รีเฟรชหน้าจอค่ะ"
           >
             <RefreshCw size={20} />
           </button>
@@ -252,19 +252,19 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
       <div className="flex flex-wrap items-center gap-6 mb-6 px-4 py-3 bg-white/50 backdrop-blur-sm rounded-3xl border border-beige/10">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-amber-100 border border-amber-300" />
-          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">รอยืนยัน</span>
+          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">รอยืนยันค่ะ</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-blue-100 border border-blue-300" />
-          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">ยืนยันแล้ว</span>
+          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">ยืนยันแล้วค่ะ</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-emerald-100 border border-emerald-300" />
-          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">เสร็จสิ้น</span>
+          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">เสร็จสิ้นค่ะ</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-rose-50 border border-rose-200" />
-          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">ยกเลิก</span>
+          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">ยกเลิกค่ะ</span>
         </div>
       </div>
 
@@ -402,7 +402,7 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
       >
         <Plus size={40} strokeWidth={3} />
         <span className="absolute -top-12 right-0 bg-primary text-white text-[10px] font-black px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl">
-          WALK-IN ด่วน
+          WALK-IN ด่วนค่ะ
         </span>
       </motion.button>
 
@@ -426,23 +426,23 @@ export default function AdminCalendar({ onQuickAdd, config }: AdminCalendarProps
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CalendarIcon className="text-primary" size={32} />
               </div>
-              <h3 className="text-2xl font-serif font-bold text-primary text-center mb-2">ยืนยันการย้ายคิว?</h3>
+              <h3 className="text-2xl font-serif font-bold text-primary text-center mb-2">ยืนยันการย้ายคิวไหมคะ?</h3>
               <p className="text-earth/60 text-center text-sm mb-8 leading-relaxed">
                 คุณกำลังจะย้ายคิวของ <span className="font-bold text-primary">{confirmMove.booking.clientName}</span><br />
-                ไปยังเวลา <span className="font-bold text-primary">{confirmMove.newTime}</span>
+                ไปยังเวลา <span className="font-bold text-primary">{confirmMove.newTime} ค่ะ</span>
               </p>
               <div className="flex gap-4">
                 <button 
                   onClick={() => setConfirmMove(null)}
                   className="flex-1 py-4 rounded-full font-bold text-earth hover:bg-section transition-all"
                 >
-                  ยกเลิก
+                  ยกเลิกค่ะ
                 </button>
                 <button 
                   onClick={executeMove}
                   className="flex-1 bg-primary text-white py-4 rounded-full font-bold shadow-lg shadow-primary/20 hover:bg-sage transition-all"
                 >
-                  ยืนยัน
+                  ยืนยันค่ะ
                 </button>
               </div>
             </motion.div>

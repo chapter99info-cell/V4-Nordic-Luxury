@@ -143,8 +143,8 @@ export const translations = {
       payment_method: 'วิธีการชำระเงิน',
       confirm_booking: 'ยืนยันการจอง',
       thank_you: 'ขอบคุณค่ะ!',
-      success_msg: 'การจองของคุณเสร็จสมบูรณ์แล้ว',
-      email_confirmation: 'เรากำลังส่งอีเมลยืนยันให้คุณ',
+      success_msg: 'การจองของคุณเสร็จสมบูรณ์แล้วค่ะ',
+      email_confirmation: 'เรากำลังส่งอีเมลยืนยันให้คุณค่ะ',
       full_name: 'ชื่อ-นามสกุล',
       special_requests: 'ความต้องการพิเศษ',
       pay_at_store: 'จ่ายที่ร้าน (เงินสด/โอน)',
@@ -192,11 +192,11 @@ export const translations = {
     },
     login: {
       staff_only: 'สำหรับพนักงานเท่านั้น',
-      authorized_access: 'กรุณาใส่รหัสผ่านเพื่อเข้าใช้งาน',
+      authorized_access: 'กรุณาใส่รหัสผ่านเพื่อเข้าใช้งานค่ะ',
       enter_code: 'ใส่รหัสผ่าน',
       access_system: 'เข้าสู่ระบบ',
       back_to_public: 'กลับสู่หน้าหลัก',
-      invalid_code: 'รหัสผ่านไม่ถูกต้อง',
+      invalid_code: 'รหัสผ่านไม่ถูกต้องค่ะ',
     }
   }
 };

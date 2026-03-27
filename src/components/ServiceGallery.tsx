@@ -8,9 +8,10 @@ import { collection, addDoc, serverTimestamp, query, onSnapshot, where, doc, get
 
 interface ServiceGalleryProps {
   onSelectService: (service: Service) => void;
+  isBookingOpen?: boolean;
 }
 
-export const ServiceGallery: React.FC<ServiceGalleryProps> = ({ onSelectService }) => {
+export const ServiceGallery: React.FC<ServiceGalleryProps> = ({ onSelectService, isBookingOpen = true }) => {
   const [filter, setFilter] = useState('All');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -226,14 +227,14 @@ export const ServiceGallery: React.FC<ServiceGalleryProps> = ({ onSelectService 
                           {promo?.isEnabled ? (
                             <>
                               <span className="text-[10px] line-through opacity-50">
-                                ${Math.min(...(Object.values(service.rates) as number[])).toFixed(2)}
+                                ${Math.min(...(Object.values(service.rates) as number[])).toFixed(2)} AUD
                               </span>
                               <span className="text-xl font-bold text-white">
-                                ${(Math.min(...(Object.values(service.rates) as number[])) * (1 - promo.discountPercentage / 100)).toFixed(2)}
+                                ${(Math.min(...(Object.values(service.rates) as number[])) * (1 - promo.discountPercentage / 100)).toFixed(2)} AUD
                               </span>
                             </>
                           ) : (
-                            <span className="text-xl font-bold">${Math.min(...(Object.values(service.rates) as number[])).toFixed(2)}</span>
+                            <span className="text-xl font-bold">${Math.min(...(Object.values(service.rates) as number[])).toFixed(2)} AUD</span>
                           )}
                         </div>
                         {selectedId === service.id && (
@@ -278,7 +279,7 @@ export const ServiceGallery: React.FC<ServiceGalleryProps> = ({ onSelectService 
 
         {/* Floating Confirm Button */}
         <AnimatePresence>
-          {selectedId && !isAdminRoute && (
+          {selectedId && !isAdminRoute && isBookingOpen && (
             <motion.div 
               key="booking-confirm-button"
               initial={{ y: 100, opacity: 0 }} 
@@ -310,6 +311,19 @@ export const ServiceGallery: React.FC<ServiceGalleryProps> = ({ onSelectService 
                 Next Step: Select Details 
                 <ChevronRight className="group-hover:translate-x-1 transition-transform" />
               </motion.button>
+            </motion.div>
+          )}
+          {selectedId && !isAdminRoute && !isBookingOpen && (
+            <motion.div 
+              key="booking-closed-notice"
+              initial={{ y: 100, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }} 
+              exit={{ y: 100, opacity: 0 }}
+              className="fixed bottom-32 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-50 print:hidden"
+            >
+              <div className="w-full bg-zinc-500 text-white py-6 rounded-[2.5rem] font-bold shadow-2xl flex items-center justify-center gap-3">
+                คิวเต็มชั่วคราวค่ะ / Fully Booked Today
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

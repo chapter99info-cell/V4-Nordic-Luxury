@@ -126,14 +126,14 @@ export const PendingBookingOverlay: React.FC<PendingBookingOverlayProps> = ({ st
       setSelectedStaffId('');
     } catch (error) {
       console.error("Accept Error:", error);
-      alert("เกิดข้อผิดพลาดในการอนุมัติคิว");
+      alert("เกิดข้อผิดพลาดในการอนุมัติคิวค่ะ");
     } finally {
       setIsProcessing(null);
     }
   };
 
   const handleDecline = async (webBooking: any) => {
-    if (!confirm('คุณต้องการปฏิเสธคิวนี้ใช่หรือไม่?')) return;
+    if (!confirm('คุณต้องการปฏิเสธคิวนี้ใช่ไหมคะ?')) return;
     
     setIsProcessing(webBooking.id);
     try {
@@ -141,7 +141,7 @@ export const PendingBookingOverlay: React.FC<PendingBookingOverlayProps> = ({ st
       await deleteDoc(doc(db, 'web_bookings', webBooking.id));
     } catch (error) {
       console.error("Decline Error:", error);
-      alert("เกิดข้อผิดพลาดในการปฏิเสธคิว");
+      alert("เกิดข้อผิดพลาดในการปฏิเสธคิวค่ะ");
     } finally {
       setIsProcessing(null);
     }

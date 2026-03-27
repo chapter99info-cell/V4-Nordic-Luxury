@@ -152,6 +152,16 @@
           }
         }
       }
+    },
+    "booking_status": {
+      "title": "Booking Status",
+      "description": "Emergency booking toggle status",
+      "type": "object",
+      "properties": {
+        "isOpen": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isOpen"]
     }
   },
   "firestore": {
@@ -186,6 +196,10 @@
     "/shop_settings/security": {
       "schema": "shop_settings",
       "description": "Security settings including owner PIN and private contact info"
+    },
+    "/settings/booking": {
+      "schema": "booking_status",
+      "description": "Emergency booking toggle status"
     }
   }
 }

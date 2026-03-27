@@ -1,426 +1,1260 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  collection, query, onSnapshot, where, 
-  addDoc, deleteDoc, doc 
+  LayoutDashboard, Users, Calendar, Settings, 
+  LogOut, TrendingUp, Clock, CheckCircle2,
+  Plus, Edit2, Trash2, X, Check, AlertCircle,
+  Camera, User as UserIcon, Shield, DollarSign,
+  PieChart, ArrowUpRight, ArrowDownRight, Filter,
+  Receipt, Bell
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  collection, onSnapshot, addDoc, updateDoc, setDoc,
+  deleteDoc, doc, serverTimestamp, query, orderBy, where, limit 
 } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { apiService } from '../services/api';
-import { format, addMinutes, parse } from 'date-fns';
-import { Booking, Staff, Service } from '../types';
-import { shopConfig } from '../config/shopConfig';
-import { PendingBookingOverlay } from './PendingBookingOverlay';
-import { Printer } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase';
+import { Staff, Booking } from '../types';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'motion/react';
+import { Loader2 } from 'lucide-react';
+import { ServicePricing } from './ServicePricing';
+import { ReceiptModal } from './ReceiptModal';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, Cell 
+} from 'recharts';
 
-// ---------------------------------------------------------
-// 1. Configuration & Styling Palette (Nordic Luxury)
-// ---------------------------------------------------------
-const operatingHours = [
-  '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
-  '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
-];
-
-const palette = {
-  bg: 'bg-[#FAF9F6]',          // Warm Beige
-  headerText: 'text-[#2D5A27]', // Deep Forest/Teal
-  text: 'text-stone-800',      // Charcoal
-  emptySlot: 'bg-white/50 border-stone-200',
-  booked: {
-    teal: 'bg-[#A8D1D1] text-[#1D3535] border-[#86B3B3]',
-    rose: 'bg-[#E29578] text-white border-[#C87E62]',
-    sage: 'bg-[#B4C2A8] text-[#2F3E26] border-[#97A689]',
-    ochre: 'bg-[#D4A373] text-white border-[#B5895D]',
-  },
-  cleaning: 'bg-[#E9C46A] text-[#5E4E29] border-[#D4B358]'
-};
-
-import { StaffNotificationTrigger } from './StaffNotificationTrigger';
-import { StaffMobileAlert } from './StaffMobileAlert';
-
-// ---------------------------------------------------------
-// 2. Component หลัก: V4 Dashboard (Nordic Edition)
-// ---------------------------------------------------------
-interface V4DashboardProps {
-  user: any;
-  role: string | null;
-}
-
-export const V4Dashboard: React.FC<V4DashboardProps> = ({ user, role }) => {
-  const [loading, setLoading] = useState(true);
-  const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+const V4Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [role] = useState<string | null>(localStorage.getItem('userRole'));
+  const [staffName] = useState<string | null>(localStorage.getItem('staffName'));
+  const [activeTab, setActiveTab] = useState('overview');
   const [bookings, setBookings] = useState<Booking[]>([]);
-  
-  // Modals State
-  const [showWalkInModal, setShowWalkInModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showSignalCenter, setShowSignalCenter] = useState(false);
-  const [showMobilePreview, setShowMobilePreview] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState({ staffId: '', staffName: '', time: '' }); 
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(true);
+  const [showCheckInAlert, setShowCheckInAlert] = useState(false);
+  const [latestCheckIn, setLatestCheckIn] = useState<any>(null);
 
-  // 1. Real-time Data Sync จาก Firebase
   useEffect(() => {
-    if (!user) return;
-
-    const today = format(new Date(), 'yyyy-MM-dd');
-
-    // ดึงข้อมูลพนักงาน
-    const unsubStaff = onSnapshot(query(collection(db, 'staff'), where('isActive', '==', true)), (snap) => {
-      setStaffList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Staff)));
-    });
-
-    // ดึงข้อมูลบริการ
-    const unsubServices = onSnapshot(collection(db, 'services'), (snap) => {
-      setServices(snap.docs.map(d => ({ id: d.id, ...d.data() } as Service)));
-    });
-
-    // ดึงข้อมูลการจองของวันนี้
-    const unsubBookings = onSnapshot(
-      query(collection(db, 'bookings'), where('date', '==', today), where('status', '!=', 'cancelled')),
-      (snap) => {
-        setBookings(snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)));
-        setLoading(false);
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, 'bookings');
+    // Fetch Booking Status
+    const unsubscribeBooking = onSnapshot(doc(db, 'settings', 'booking'), (docSnap) => {
+      if (docSnap.exists()) {
+        setIsBookingOpen(docSnap.data().isOpen);
       }
+    });
+
+    // Fetch Bookings
+    const qBookings = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
+    const unsubscribeBookings = onSnapshot(qBookings, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+      setBookings(data);
+    });
+
+    // Fetch Staff
+    const qStaff = query(collection(db, 'staff'), orderBy('name', 'asc'));
+    const unsubscribeStaff = onSnapshot(qStaff, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+      setStaff(data);
+      setLoading(false);
+    });
+
+    // Listen for Check-in Notifications
+    const qCheckIn = query(
+      collection(db, 'notifications'), 
+      where('type', '==', 'check-in'),
+      where('isRead', '==', false),
+      orderBy('createdAt', 'desc'),
+      limit(1)
     );
-
-    return () => { unsubStaff(); unsubServices(); unsubBookings(); };
-  }, [user, role]);
-
-  // 2. Handlers สำหรับ Walk-in และ Cancel
-  const handleOpenWalkIn = (staffId: string, staffName: string, time: string) => {
-    setSelectedSlot({ staffId, staffName, time });
-    setShowWalkInModal(true);
-  };
-
-  const handleOpenCancel = (booking: Booking) => {
-    setSelectedBooking(booking);
-    setShowCancelModal(true);
-  };
-
-  const confirmWalkIn = async () => {
-    if (!selectedService) return alert('กรุณาเลือกบริการก่อนค่ะ');
-    setIsSubmitting(true);
-    try {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const startDT = parse(selectedSlot.time, 'HH:mm', new Date());
-      const endDT = addMinutes(startDT, selectedService.duration);
-      
-      const newBookingData: Omit<Booking, 'id'> = {
-        shopId: shopConfig.shopId,
-        clientName: `Walk-in (${format(new Date(), 'HH:mm')})`,
-        serviceName: selectedService.name,
-        serviceId: selectedService.id,
-        therapistId: selectedSlot.staffId,
-        therapistName: selectedSlot.staffName,
-        date: today,
-        startTime: selectedSlot.time,
-        endTime: format(endDT, 'HH:mm'),
-        duration: selectedService.duration,
-        price: selectedService.fullPrice,
-        status: 'confirmed',
-        paymentStatus: 'unpaid',
-        isWalkIn: true,
-        clientId: 'walk-in',
-        depositPaid: false,
-        intakeFormCompleted: false,
-        source: 'Walk-in',
-        createdAt: new Date().toISOString()
-      };
-
-      // บันทึกคิวลูกค้า
-      await apiService.createBooking(newBookingData);
-      
-      // บันทึกคิวทำความสะอาดอัตโนมัติ (15 นาที)
-      await addDoc(collection(db, 'bookings'), {
-        ...newBookingData,
-        clientName: 'ทำความสะอาด',
-        serviceName: 'Cleaning',
-        duration: 15,
-        startTime: format(endDT, 'HH:mm'),
-        endTime: format(addMinutes(endDT, 15), 'HH:mm'),
-        type: 'cleaning',
-        source: 'System'
-      });
-
-      setShowWalkInModal(false);
-      setSelectedService(null);
-      alert('บันทึกคิวสำเร็จ!');
-    } catch (e) { 
-      console.error("Booking Error:", e);
-      alert("เกิดข้อผิดพลาดในการบันทึกคิว");
-    }
-    setIsSubmitting(false);
-  };
-
-  const deleteBooking = async () => {
-    if (!selectedBooking) return;
-    setIsSubmitting(true);
-    try {
-      await deleteDoc(doc(db, 'bookings', selectedBooking.id));
-      setShowCancelModal(false);
-      alert('ลบคิวสำเร็จ!');
-    } catch (e) { 
-      console.error("Delete Error:", e);
-      alert("ไม่สามารถลบคิวได้");
-    }
-    setIsSubmitting(false);
-  };
-
-  // ---------------------------------------------------------
-  // LOADING STATE
-  // ---------------------------------------------------------
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-[#FAF9F6]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D5A27]"></div>
-          <p className="text-[#2D5A27] font-black tracking-widest uppercase text-sm">Loading Mira Royale...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------
-  // MAIN RENDER
-  // ---------------------------------------------------------
-  return (
-    <div className={`min-h-screen ${palette.bg} p-6 font-sans ${palette.text} print:ml-0 print:p-0 print:w-full`}>
-      
-      {/* HEADER SECTION */}
-      <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 print:mb-2">
-        <div className="text-center md:text-left">
-          <h1 className={`text-5xl font-black tracking-tighter ${palette.headerText} uppercase`}>
-            Mira Royale
-          </h1>
-          <p className="text-stone-400 font-bold tracking-[0.2em] uppercase text-xs mt-1">
-            {format(new Date(), 'EEEE, d MMMM yyyy')}
-          </p>
-        </div>
+    const unsubscribeCheckIn = onSnapshot(qCheckIn, (snapshot) => {
+      if (!snapshot.empty) {
+        const notification = snapshot.docs[0].data();
+        const now = Date.now();
+        const createdAt = notification.createdAt?.toMillis() || now;
         
-        <div className="flex flex-wrap items-center gap-4">
-          <button 
-            onClick={() => window.print()} 
-            className="flex items-center gap-2 bg-earth/10 text-earth hover:bg-earth hover:text-white px-4 py-2 rounded-xl transition-all font-bold text-sm print:hidden"
-          >
-            <Printer size={18} />
-            <span>Print Daily Schedule</span>
-          </button>
-          <button 
-            onClick={() => setShowSignalCenter(true)}
-            className="bg-[#006D77] hover:bg-[#005a63] text-white px-8 py-4 rounded-full font-black text-sm shadow-lg shadow-[#006D77]/20 transition-all active:scale-95 print:hidden"
-          >
-            SIGNAL CENTER
-          </button>
-          <button 
-            onClick={() => setShowMobilePreview(true)}
-            className="bg-stone-100 hover:bg-stone-200 text-stone-600 px-8 py-4 rounded-full font-black text-sm transition-all active:scale-95 print:hidden"
-          >
-            MOBILE PREVIEW
-          </button>
-          <button 
-            onClick={() => handleOpenWalkIn('', 'Unassigned', format(new Date(), 'HH:mm'))}
-            className="bg-[#D4A373] hover:bg-[#B5895D] text-white px-8 py-4 rounded-full font-black text-sm shadow-[0_15px_30px_-10px_rgba(212,163,115,0.5)] transition-all active:scale-95 print:hidden"
-          >
-            + WALK-IN NOW
-          </button>
+        // Only alert for notifications created in the last 30 seconds
+        if (now - createdAt < 30000) {
+          setLatestCheckIn(notification);
+          setShowCheckInAlert(true);
+          // Play clear "Ding!" sound
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
+          audio.volume = 0.8;
+          audio.play().catch(e => console.log('Audio play failed:', e));
+          
+          // Auto hide after 15 seconds
+          setTimeout(() => setShowCheckInAlert(false), 15000);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeBooking();
+      unsubscribeBookings();
+      unsubscribeStaff();
+      unsubscribeCheckIn();
+    };
+  }, []);
+
+  const toggleBookingStatus = async () => {
+    try {
+      await setDoc(doc(db, 'settings', 'booking'), {
+        isOpen: !isBookingOpen,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      toast.success(isBookingOpen ? 'หยุดรับจองแล้วค่ะ / Bookings stopped' : 'เปิดรับจองแล้วค่ะ / Bookings opened');
+    } catch (error) {
+      console.error('Error toggling booking status:', error);
+      toast.error('ทำรายการไม่สำเร็จค่ะ / Operation failed');
+    }
+  };
+
+  const sendStaffAlert = async () => {
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        userId: 'owner', // Assuming owner receives all notifications
+        title: '🚨 แจ้งเตือนพนักงานไม่พอค่ะ / Staff Shortage Alert',
+        message: `พนักงาน ${staffName} แจ้งว่าพนักงานไม่พอในขณะนี้ค่ะ / Staff ${staffName} reported a shortage.`,
+        type: 'system',
+        isRead: false,
+        createdAt: serverTimestamp()
+      });
+      toast.success('ส่งแจ้งเตือนให้เจ้าของร้านแล้วค่ะ / Alert sent to owner');
+    } catch (error) {
+      console.error('Error sending alert:', error);
+      toast.error('ส่งแจ้งเตือนไม่สำเร็จค่ะ / Failed to send alert');
+    }
+  };
+
+  // คำนวณสถิติสำหรับ Header
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const todayRevenue = bookings
+    .filter(b => b.date === todayStr && (b.status === 'completed' || b.status === 'confirmed'))
+    .reduce((sum, b) => sum + (b.price || b.subtotal || 0), 0);
+  
+  const activeStaffCount = staff.filter(s => s.status === 'Working' && s.isActive).length;
+  const totalBookingsCount = bookings.length;
+
+  // ฟังก์ชัน Logout
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/'); // ใช้ navigate แทน window.location.href เพื่อความเสถียรของ SPA
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FDFBF7] text-[#2D241E] flex font-sans text-xl">
+      {/* --- Sidebar --- */}
+      <aside className="w-80 bg-[#F5F2ED] border-r-2 border-[#D4AF37]/10 p-8 flex flex-col shadow-2xl">
+        <div className="mb-12 text-center">
+          <h2 className="text-[#D4AF37] font-serif text-3xl font-bold italic">Mira Royale</h2>
+          <p className="text-xs text-[#2D241E]/40 tracking-[0.2em] uppercase mt-2 font-bold">Management V5 - Light Mode</p>
         </div>
-      </header>
 
-      {/* DASHBOARD GRID */}
-      <div className="bg-white rounded-[3rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.08)] overflow-hidden border border-stone-100 print:shadow-none print:p-0">
-        <div className="overflow-x-auto scrollbar-hide">
-          <div className="min-w-[1200px]">
-            
-            {/* TIMELINE HEADER */}
-            <div className="flex bg-[#F1F0E8] border-b border-stone-100">
-              <div className="w-64 p-8 border-r border-stone-200/60 sticky left-0 bg-[#F1F0E8] z-20 font-black text-stone-400 uppercase tracking-widest text-center text-sm">
-                Therapist
-              </div>
-              {operatingHours.map(time => (
-                <div key={time} className="flex-1 p-8 text-center font-black text-stone-500 border-r border-stone-200/30 text-lg">
-                  {time}
-                </div>
-              ))}
-            </div>
+        <nav className="flex-1 space-y-4">
+          <SidebarItem 
+            icon={<LayoutDashboard />} 
+            label={<>หน้าแรกค่ะ<br/><span className="text-sm opacity-70">Overview</span></>} 
+            active={activeTab === 'overview'} 
+            onClick={() => setActiveTab('overview')} 
+          />
+          <SidebarItem 
+            icon={<Calendar />} 
+            label={<>รายการจองค่ะ<br/><span className="text-sm opacity-70">Bookings</span></>} 
+            active={activeTab === 'bookings'} 
+            onClick={() => setActiveTab('bookings')} 
+          />
+          
+          {/* เมนูเฉพาะ Owner */}
+          {role === 'owner' && (
+            <>
+              <SidebarItem 
+                icon={<PieChart />} 
+                label={<>รายได้ค่ะ<br/><span className="text-sm opacity-70">Analytics</span></>} 
+                active={activeTab === 'analytics'} 
+                onClick={() => setActiveTab('analytics')} 
+              />
+              <SidebarItem 
+                icon={<DollarSign />} 
+                label={<>รายการราคาค่ะ<br/><span className="text-sm opacity-70">Service Pricing</span></>} 
+                active={activeTab === 'pricing'} 
+                onClick={() => setActiveTab('pricing')} 
+              />
+              <SidebarItem 
+                icon={<Users />} 
+                label={<>จัดการพนักงานค่ะ<br/><span className="text-sm opacity-70">Staff</span></>} 
+                active={activeTab === 'staff'} 
+                onClick={() => setActiveTab('staff')} 
+              />
+              <SidebarItem 
+                icon={<Settings />} 
+                label={<>ตั้งค่าร้านค่ะ<br/><span className="text-sm opacity-70">Settings</span></>} 
+                active={activeTab === 'settings'} 
+                onClick={() => setActiveTab('settings')} 
+              />
+            </>
+          )}
+        </nav>
 
-            {/* STAFF DATA ROWS */}
-            {staffList.map((staff, idx) => (
-              <div key={staff.id} className="flex border-b border-stone-50 group transition-colors hover:bg-stone-50/30">
-                <div className="w-64 p-8 border-r border-stone-200/60 sticky left-0 bg-white z-10 font-black text-2xl flex items-center justify-center group-hover:bg-stone-50/80 transition-colors">
-                  {staff.name}
-                </div>
-                
-                {operatingHours.map(time => {
-                  const active = bookings.find(b => b.therapistId === staff.id && b.startTime <= time && b.endTime > time);
-                  
-                  return (
-                    <div key={time} className="flex-1 h-44 p-3 border-r border-stone-50/50 relative">
-                      {active ? (
-                        <div 
-                          onClick={() => handleOpenCancel(active)}
-                          className={`w-full h-full rounded-[1.5rem] border-2 p-4 flex flex-col justify-center items-center cursor-pointer transition-all hover:scale-[1.03] hover:shadow-xl
-                            ${(active as any).type === 'cleaning' ? palette.cleaning : (idx % 2 === 0 ? palette.booked.teal : palette.booked.rose)}
-                          `}
-                        >
-                          <span className="font-black text-xl text-center leading-none uppercase tracking-tight">
-                            {active.clientName}
-                            {active.status === 'pending' && (
-                              <span className="block text-[8px] mt-1 bg-white/40 px-2 py-0.5 rounded-full animate-pulse">PENDING APPROVAL</span>
-                            )}
-                          </span>
-                          <div className="mt-3 px-3 py-1 bg-white/20 rounded-full text-[10px] font-black tracking-widest uppercase">
-                            {active.startTime} - {active.endTime}
-                          </div>
-                        </div>
-                      ) : (
-                        <div 
-                          onClick={() => handleOpenWalkIn(staff.id, staff.name, time)}
-                          className="w-full h-full rounded-[1.5rem] border-2 border-dashed border-stone-100 hover:border-[#D4A373] hover:bg-[#FAF9F6] flex items-center justify-center cursor-pointer group/slot transition-all"
-                        >
-                          <span className="text-4xl text-stone-200 group-hover/slot:text-[#D4A373] group-hover/slot:scale-125 transition-all font-light print:hidden">
-                            +
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+        <button 
+          onClick={handleLogout}
+          className="mt-auto flex items-center gap-4 text-rose-600 hover:text-rose-700 transition-all p-6 bg-rose-50 rounded-[2rem] border-2 border-rose-100 shadow-md hover:shadow-lg"
+        >
+          <LogOut size={32} /> <span className="text-xl font-bold uppercase tracking-wider">ออกระบบ / Logout</span>
+        </button>
+      </aside>
+
+      {/* --- Main Content --- */}
+      <main className="flex-1 p-16 overflow-y-auto">
+        <header className="flex justify-between items-center mb-16">
+          <div>
+            <h1 className="text-5xl font-serif font-bold text-[#2D241E]">
+              สวัสดีค่ะคุณ {role === 'owner' ? 'เจ้าของร้าน' : staffName}
+            </h1>
+            <p className="text-[#2D241E]/60 text-2xl mt-3 font-bold">ยินดีต้อนรับกลับมาค่ะ / Welcome back.</p>
           </div>
-        </div>
-      </div>
-
-      {/* FOOTER NOTE */}
-      <footer className="mt-8 text-center text-stone-400 font-bold text-xs uppercase tracking-[0.3em] print:hidden">
-        Mira Royale Management System V4 • Premium Edition
-      </footer>
-
-      {/* MODAL: WALK-IN */}
-      {showWalkInModal && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xl flex justify-center items-center p-6 z-50 animate-in fade-in duration-300 print:hidden">
-          <div className="bg-[#FAF9F6] rounded-[3.5rem] w-full max-w-2xl overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] border border-white">
-            <div className="bg-[#2D5A27] p-12 text-white text-center">
-              <h2 className="text-5xl font-black uppercase tracking-tighter italic">New Booking</h2>
-              <p className="opacity-60 font-black uppercase tracking-widest text-xs mt-3">
-                Assigning to {selectedSlot.staffName} at {selectedSlot.time}
-              </p>
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setIsReceiptModalOpen(true)}
+              className="bg-[#22C55E] hover:bg-[#16A34A] text-white px-10 py-6 rounded-[2.5rem] font-black text-2xl shadow-xl shadow-green-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-4 border-b-8 border-[#15803D]"
+            >
+              <Receipt size={36} />
+              <span>ออกใบเสร็จค่ะ / Create Receipt</span>
+            </button>
+            <div className="flex items-center gap-6 bg-white p-6 rounded-[2.5rem] border-2 border-[#D4AF37]/10 px-10 shadow-xl">
+              <div className="w-5 h-5 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50" />
+              <span className="text-lg font-bold uppercase tracking-widest text-[#2D241E]/80">ระบบทำงานปกติค่ะ / Online</span>
             </div>
-            
-            <div className="p-12 space-y-10">
-              <div className="grid grid-cols-2 gap-5">
-                {services.map(srv => (
-                  <button 
-                    key={srv.id}
-                    onClick={() => setSelectedService(srv)}
-                    className={`p-8 rounded-[2rem] border-4 transition-all duration-300 flex flex-col items-center gap-1 ${
-                      selectedService?.id === srv.id 
-                        ? 'bg-[#D4A373] border-[#B5895D] text-white scale-105 shadow-2xl' 
-                        : 'bg-white border-stone-50 text-stone-800 hover:border-stone-200'
-                    }`}
-                  >
-                    <span className="text-2xl font-black uppercase tracking-tight">{srv.name}</span>
-                    <span className="text-xs font-black opacity-60 uppercase tracking-widest">
-                      {srv.duration} MIN • ${srv.fullPrice}
-                    </span>
-                  </button>
-                ))}
+          </div>
+        </header>
+
+        {/* ส่วนแสดงสถิติ (Stats Grid) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16">
+          <StatCard 
+            title="การจองทั้งหมด / Total Bookings" 
+            value={totalBookingsCount.toString()} 
+            icon={<Calendar className="text-[#D4AF37]" />} 
+          />
+          <StatCard 
+            title="รายได้วันนี้ / Revenue (Today)" 
+            value={todayRevenue.toLocaleString()} 
+            icon={<TrendingUp className="text-green-600" />} 
+            isCurrency={true}
+          />
+          <StatCard 
+            title="พนักงานที่ทำงาน / Active Staff" 
+            value={activeStaffCount.toString()} 
+            icon={<Users className="text-blue-600" />} 
+          />
+        </div>
+
+        {/* เนื้อหาหลักตาม Tab */}
+        <section className="rounded-[3rem] p-12 bg-white border-2 border-[#D4AF37]/10 text-[#2D241E] shadow-2xl min-h-[500px]">
+          {activeTab === 'overview' && (
+            <OverviewContent 
+              bookings={bookings} 
+              role={role} 
+              isBookingOpen={isBookingOpen} 
+              onToggle={toggleBookingStatus}
+              onAlert={sendStaffAlert}
+            />
+          )}
+          {activeTab === 'staff' && role === 'owner' && <StaffManagementContent staffList={staff} />}
+          {activeTab === 'analytics' && role === 'owner' && <RevenueAnalyticsContent bookings={bookings} />}
+          {activeTab === 'pricing' && <ServicePricing isAdmin={true} />}
+          {activeTab === 'bookings' && <BookingsContent bookings={bookings} />}
+          {activeTab === 'settings' && role === 'owner' && <SettingsContent />}
+        </section>
+      </main>
+
+      {/* --- Check-in Alert Overlay --- */}
+      <AnimatePresence>
+        {showCheckInAlert && (
+          <motion.div 
+            initial={{ opacity: 0, y: -200, scale: 0.5 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -200, scale: 0.5 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[2000] w-[95%] max-w-4xl"
+          >
+            <div className="bg-[#D4AF37] text-white p-12 rounded-[4rem] shadow-[0_35px_60px_-15px_rgba(212,175,55,0.5)] flex flex-col items-center text-center gap-8 border-8 border-white">
+              <div className="w-32 h-32 bg-white text-[#D4AF37] rounded-full flex items-center justify-center animate-bounce shadow-2xl">
+                <Users size={64} />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-5xl font-black uppercase tracking-widest">ลูกค้ามาถึงแล้วค่ะ!</h3>
+                <p className="text-3xl font-bold opacity-90">Customer Arrived at Counter</p>
+                
+                {latestCheckIn?.serviceName && (
+                  <div className="mt-8 p-6 bg-white/20 rounded-[2rem] border-4 border-white/30">
+                    <p className="text-2xl font-bold opacity-80 mb-2">บริการที่เลือก / Selected Service:</p>
+                    <p className="text-5xl font-black text-white drop-shadow-lg">
+                      {latestCheckIn.serviceName}
+                    </p>
+                  </div>
+                )}
               </div>
               
-              <div className="space-y-4">
+              <button 
+                onClick={() => setShowCheckInAlert(false)}
+                className="mt-4 px-12 py-6 bg-white text-[#D4AF37] rounded-[2rem] text-2xl font-black uppercase tracking-widest hover:bg-gray-100 transition-all shadow-xl active:scale-95"
+              >
+                รับทราบค่ะ / OK, GOT IT
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Help Floating Button (Senior Friendly) --- */}
+      <ReceiptModal 
+        isOpen={isReceiptModalOpen} 
+        onClose={() => setIsReceiptModalOpen(false)} 
+        shopName="Mira Royale" 
+      />
+    </div>
+  );
+};
+
+// Component ย่อย: รายการเมนู Sidebar
+const SidebarItem = ({ icon, label, active, onClick }: any) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-6 p-6 rounded-[2rem] transition-all ${
+      active 
+        ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/30 scale-105' 
+        : 'text-[#2D241E]/40 hover:bg-[#D4AF37]/10 hover:text-[#2D241E]'
+    }`}
+  >
+    {React.cloneElement(icon, { size: 32 })}
+    <span className="text-xl font-bold uppercase tracking-wider text-left leading-tight">{label}</span>
+  </button>
+);
+
+// Component ย่อย: บัตรสถิติ
+const StatCard = ({ title, value, icon, isCurrency }: any) => (
+  <div className="bg-white border-2 border-[#D4AF37]/10 p-10 rounded-[3rem] flex items-center justify-between shadow-md hover:shadow-xl transition-all">
+    <div>
+      <p className="text-[#D4AF37] text-sm uppercase tracking-[0.2em] mb-3 font-black">{title}</p>
+      {isCurrency ? (
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-black text-[#D4AF37]">$</span>
+          <p className="text-6xl font-black text-[#2D241E]">{value}</p>
+          <span className="text-2xl font-black text-[#2D241E]/40 ml-2">AUD</span>
+        </div>
+      ) : (
+        <p className="text-6xl font-black text-[#2D241E]">{value}</p>
+      )}
+    </div>
+    <div className="p-6 bg-[#FDFBF7] rounded-[2rem] border-2 border-[#D4AF37]/10 shadow-inner">
+      {React.cloneElement(icon, { size: 40 })}
+    </div>
+  </div>
+);
+
+// Component ย่อย: หน้าต่างยืนยันการลบ (Senior Friendly)
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: any) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          className="relative w-full max-w-lg bg-white border-4 border-[#D4AF37]/20 rounded-[4rem] p-12 text-center shadow-2xl"
+        >
+          <div className="w-28 h-28 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-8 text-rose-500 border-2 border-rose-500/20">
+            <AlertCircle size={56} />
+          </div>
+          <h2 className="text-4xl font-bold text-[#2D241E] mb-6">{title}</h2>
+          <p className="text-2xl text-[#2D241E]/60 mb-12 leading-relaxed font-bold">{message}</p>
+          <div className="flex gap-6">
+            <button 
+              onClick={onClose}
+              className="flex-1 py-6 bg-gray-100 rounded-[2rem] font-bold text-2xl text-[#2D241E]/40 hover:bg-gray-200 transition-all border-2 border-gray-200"
+            >
+              ยกเลิกค่ะ / Cancel
+            </button>
+            <button 
+              onClick={onConfirm}
+              className="flex-1 py-6 bg-rose-600 text-white rounded-[2rem] font-bold text-2xl hover:bg-rose-700 transition-all shadow-xl shadow-rose-600/30"
+            >
+              ยืนยันค่ะ / Confirm
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);
+
+// Component ย่อย: เนื้อหาหน้า Overview
+const OverviewContent = ({ bookings, role, isBookingOpen, onToggle, onAlert }: any) => (
+  <div className="space-y-10">
+    {/* Emergency Toggle Section */}
+    <div className="bg-white rounded-[3.5rem] p-12 border-2 border-[#D4AF37]/20 shadow-2xl relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+      
+      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
+        <div className="flex-1 text-center md:text-left">
+          <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
+            <div className={`w-4 h-4 rounded-full animate-ping ${isBookingOpen ? 'bg-green-500' : 'bg-rose-500'}`} />
+            <h3 className="text-3xl font-black uppercase tracking-widest text-[#2D241E]">
+              สถานะการรับจอง / Booking Status
+            </h3>
+          </div>
+          <p className={`text-5xl md:text-6xl font-black mb-6 ${isBookingOpen ? 'text-green-500' : 'text-rose-500'}`}>
+            {isBookingOpen ? 'เปิดรับจองตามปกติค่ะ' : 'หยุดรับจองชั่วคราวค่ะ'}
+            <br/>
+            <span className="text-3xl opacity-80">
+              {isBookingOpen ? 'Open for Bookings' : 'Stop Bookings'}
+            </span>
+          </p>
+          <div className="bg-[#FDFBF7] p-6 rounded-3xl border border-[#2D241E]/10 inline-block">
+            <p className="text-xl text-[#2D241E]/60 font-bold">
+              💡 {role === 'owner' 
+                ? 'ใช้สำหรับหยุดรับลูกค้าใหม่เมื่อพนักงานไม่พอค่ะ' 
+                : 'หากพนักงานไม่พอ กรุณาแจ้งเจ้าของร้านหรือกดปุ่มแจ้งเตือนค่ะ'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-6">
+          {role === 'owner' ? (
+            <button 
+              onClick={onToggle}
+              className={`group relative w-64 h-32 rounded-full transition-all duration-500 shadow-2xl ${
+                isBookingOpen ? 'bg-green-600 shadow-green-600/20' : 'bg-rose-600 shadow-rose-600/20'
+              }`}
+            >
+              <div className={`absolute top-2 w-28 h-28 bg-white rounded-full transition-all duration-500 shadow-lg flex items-center justify-center ${
+                isBookingOpen ? 'left-34' : 'left-2'
+              }`}>
+                {isBookingOpen ? (
+                  <Check size={48} className="text-green-600" />
+                ) : (
+                  <X size={48} className="text-rose-600" />
+                )}
+              </div>
+              <span className={`absolute inset-0 flex items-center justify-center text-2xl font-black uppercase tracking-widest pointer-events-none ${
+                isBookingOpen ? 'pr-32 text-white/40' : 'pl-32 text-white/40'
+              }`}>
+                {isBookingOpen ? 'OPEN' : 'STOP'}
+              </span>
+            </button>
+          ) : (
+            <button 
+              onClick={onAlert}
+              className="px-12 py-8 bg-rose-600 text-white rounded-[3rem] font-black text-3xl uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-rose-600/30 flex items-center gap-6 border-b-8 border-rose-800"
+            >
+              <Bell size={48} className="animate-bounce" />
+              <span>แจ้งพนักงานไม่พอค่ะ<br/><span className="text-xl opacity-70">Staff Shortage Alert</span></span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white rounded-[2.5rem] p-12 border border-[#2D241E]/10 shadow-2xl">
+      <h3 className="text-3xl font-bold mb-10 flex items-center gap-4 text-[#2D241E]">
+        <Clock size={36} className="text-[#D4AF37]" /> กิจกรรมล่าสุดค่ะ / Recent Activities
+      </h3>
+      <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#2D241E]/5 rounded-[2rem]">
+        <p className="text-[#2D241E]/40 text-center text-2xl font-bold tracking-wider">
+          ไม่มีกิจกรรมล่าสุดค่ะ / No recent activities
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
+// Component ย่อย: เนื้อหาหน้า Revenue & Analytics
+const RevenueAnalyticsContent = ({ bookings }: { bookings: Booking[] }) => {
+  const [filter, setFilter] = useState<'today' | '7days' | 'month'>('7days');
+
+  // คำนวณรายได้
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const thisMonthStr = now.toISOString().slice(0, 7);
+
+  const dailyRevenue = bookings
+    .filter(b => b.date === todayStr && (b.status === 'completed' || b.status === 'confirmed'))
+    .reduce((sum, b) => sum + (b.price || b.subtotal || 0), 0);
+
+  const monthlyRevenue = bookings
+    .filter(b => b.date.startsWith(thisMonthStr) && (b.status === 'completed' || b.status === 'confirmed'))
+    .reduce((sum, b) => sum + (b.price || b.subtotal || 0), 0);
+
+  const totalPaidBookings = bookings.filter(b => b.status === 'completed' || b.status === 'confirmed').length;
+
+  // เตรียมข้อมูลกราฟ 7 วันล่าสุด
+  const chartData = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split('T')[0];
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const revenue = bookings
+      .filter(b => b.date === dateStr && (b.status === 'completed' || b.status === 'confirmed'))
+      .reduce((sum, b) => sum + (b.price || b.subtotal || 0), 0);
+    return { name: dayName, revenue, date: dateStr };
+  });
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-12"
+    >
+      {/* Header & Filter */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-5xl font-serif font-bold text-[#2D241E]">รายได้และสถิติ / Revenue & Analytics</h2>
+          <p className="text-[#2D241E]/60 text-2xl font-bold mt-3">ติดตามผลประกอบการของร้านคุณ / Track your business growth.</p>
+        </div>
+        <div className="flex bg-white p-3 rounded-[2rem] border-2 border-[#D4AF37]/10 shadow-inner">
+          {(['today', '7days', 'month'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-8 py-4 rounded-[1.5rem] text-lg font-black uppercase tracking-widest transition-all ${
+                filter === f ? 'bg-[#D4AF37] text-white shadow-lg' : 'text-[#2D241E]/40 hover:text-[#2D241E]'
+              }`}
+            >
+              {f === 'today' ? 'วันนี้ / Today' : f === '7days' ? '7 วัน / 7 Days' : 'เดือนนี้ / Month'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div className="bg-white border-2 border-[#D4AF37]/10 p-12 rounded-[3.5rem] shadow-xl hover:shadow-[#D4AF37]/5 transition-all">
+          <div className="flex justify-between items-start mb-8">
+            <div className="p-5 bg-green-500/10 rounded-[2rem] text-green-500 border-2 border-green-500/20">
+              <DollarSign size={40} />
+            </div>
+            <span className="flex items-center gap-2 text-sm font-black text-green-500 bg-green-500/10 px-5 py-2 rounded-full uppercase border-2 border-green-500/20">
+              <ArrowUpRight size={20} /> 12%
+            </span>
+          </div>
+          <p className="text-[#2D241E]/40 text-sm uppercase tracking-[0.2em] mb-3 font-black">รายได้วันนี้ / Daily Earnings</p>
+          <div className="flex items-baseline gap-3">
+            <span className="text-3xl font-black text-[#D4AF37]">$</span>
+            <p className="text-6xl font-black text-[#2D241E]">{dailyRevenue.toLocaleString()}</p>
+            <span className="text-2xl font-black text-[#2D241E]/40 ml-2">AUD</span>
+          </div>
+        </div>
+
+        <div className="bg-white border-2 border-[#D4AF37]/10 p-12 rounded-[3.5rem] shadow-xl hover:shadow-[#D4AF37]/5 transition-all">
+          <div className="flex justify-between items-start mb-8">
+            <div className="p-5 bg-amber-500/10 rounded-[2rem] text-amber-500 border-2 border-amber-500/20">
+              <TrendingUp size={40} />
+            </div>
+            <span className="flex items-center gap-2 text-sm font-black text-green-500 bg-green-500/10 px-5 py-2 rounded-full uppercase border-2 border-green-500/20">
+              <ArrowUpRight size={20} /> 8%
+            </span>
+          </div>
+          <p className="text-[#2D241E]/40 text-sm uppercase tracking-[0.2em] mb-3 font-black">รายได้เดือนนี้ / Monthly Earnings</p>
+          <div className="flex items-baseline gap-3">
+            <span className="text-3xl font-black text-[#D4AF37]">$</span>
+            <p className="text-6xl font-black text-[#2D241E]">{monthlyRevenue.toLocaleString()}</p>
+            <span className="text-2xl font-black text-[#2D241E]/40 ml-2">AUD</span>
+          </div>
+        </div>
+
+        <div className="bg-white border-2 border-[#D4AF37]/10 p-12 rounded-[3.5rem] shadow-xl hover:shadow-[#D4AF37]/5 transition-all">
+          <div className="flex justify-between items-start mb-8">
+            <div className="p-5 bg-blue-500/10 rounded-[2rem] text-blue-500 border-2 border-blue-500/20">
+              <CheckCircle2 size={40} />
+            </div>
+          </div>
+          <p className="text-[#2D241E]/40 text-sm uppercase tracking-[0.2em] mb-3 font-black">การจองที่สำเร็จ / Total Paid</p>
+          <p className="text-6xl font-black text-[#2D241E]">{totalPaidBookings}</p>
+        </div>
+      </div>
+
+      {/* Chart Section */}
+      <div className="bg-white border-2 border-[#D4AF37]/10 p-10 rounded-[3rem] shadow-xl">
+        <h3 className="text-2xl font-bold text-[#2D241E] mb-10 flex items-center gap-3">
+          <TrendingUp size={28} className="text-[#D4AF37]" /> แนวโน้มรายได้ (7 วันล่าสุด) / Revenue Trend (Last 7 Days)
+        </h3>
+        <div className="h-[400px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#2D241E', fontSize: 16, fontWeight: 'bold' }} 
+                dy={15}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#2D241E', fontSize: 16, fontWeight: 'bold' }} 
+                tickFormatter={(value) => `$${value}`}
+              />
+              <Tooltip 
+                cursor={{ fill: '#FDFBF7' }}
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '2px solid #D4AF37', 
+                  borderRadius: '24px',
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                  padding: '16px',
+                  color: '#2D241E'
+                }}
+                itemStyle={{ color: '#2D241E' }}
+              />
+              <Bar dataKey="revenue" radius={[12, 12, 0, 0]} barSize={60}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={index === 6 ? '#10b981' : '#D4AF37'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Transaction History */}
+      <div className="bg-white border-2 border-[#D4AF37]/10 rounded-[3rem] overflow-hidden shadow-xl">
+        <div className="p-10 border-b-2 border-[#2D241E]/5 flex justify-between items-center bg-[#FDFBF7]">
+          <h3 className="text-2xl font-bold text-[#2D241E]">รายการธุรกรรมล่าสุด / Recent Transactions</h3>
+          <button className="text-[#D4AF37] text-lg font-black uppercase tracking-widest hover:underline">ดูทั้งหมด / View All</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-[#FDFBF7]">
+                <th className="px-10 py-6 text-sm uppercase tracking-widest text-[#2D241E]/40 font-black">ลูกค้า / Customer</th>
+                <th className="px-10 py-6 text-sm uppercase tracking-widest text-[#2D241E]/40 font-black">บริการ / Service</th>
+                <th className="px-10 py-6 text-sm uppercase tracking-widest text-[#2D241E]/40 font-black">จำนวนเงิน / Amount</th>
+                <th className="px-10 py-6 text-sm uppercase tracking-widest text-[#2D241E]/40 font-black">เวลา / Time</th>
+                <th className="px-10 py-6 text-sm uppercase tracking-widest text-[#2D241E]/40 font-black">สถานะ / Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-[#2D241E]/5">
+              {bookings.slice(0, 5).map((booking) => (
+                <tr key={booking.id} className="hover:bg-[#FDFBF7] transition-colors">
+                  <td className="px-10 py-8">
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-full bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] font-black text-xl border-2 border-[#D4AF37]/20">
+                        {booking.clientName?.charAt(0)}
+                      </div>
+                      <span className="text-xl font-bold text-[#2D241E]">{booking.clientName}</span>
+                    </div>
+                  </td>
+                  <td className="px-10 py-8 text-xl text-[#2D241E]/70 font-medium">{booking.serviceName}</td>
+                  <td className="px-10 py-8 text-3xl font-black text-[#2D241E]">${(booking.price || booking.subtotal || 0).toLocaleString()} <span className="text-lg opacity-50">AUD</span></td>
+                  <td className="px-10 py-8 text-lg text-[#2D241E]/50 font-bold">{booking.date} {booking.startTime}</td>
+                  <td className="px-10 py-8">
+                    <span className={`px-5 py-2 rounded-full text-sm font-black uppercase shadow-sm border-2 ${
+                      booking.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                      booking.status === 'confirmed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 
+                      'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                    }`}>
+                      {booking.status === 'completed' ? 'เสร็จสิ้น / Completed' : 
+                       booking.status === 'confirmed' ? 'ยืนยันแล้ว / Confirmed' : 
+                       'รอดำเนินการ / Pending'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Component ย่อย: เนื้อหาหน้า Staff Management
+const StaffManagementContent = ({ staffList }: { staffList: Staff[] }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    role: '',
+    avatar: '',
+    isActive: true,
+    status: 'Off' as 'Working' | 'Off',
+    specialties: [] as string[]
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleOpenModal = (item?: Staff) => {
+    if (item) {
+      setEditingStaff(item);
+      setFormData({
+        name: item.name,
+        role: item.role,
+        avatar: item.avatar || '',
+        isActive: item.isActive,
+        status: item.status,
+        specialties: item.specialties || []
+      });
+    } else {
+      setEditingStaff(null);
+      setFormData({
+        name: '',
+        role: '',
+        avatar: '',
+        isActive: true,
+        status: 'Off',
+        specialties: []
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('กรุณาเลือกไฟล์รูปภาพ / Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('ขนาดรูปต้องไม่เกิน 2MB / Image size must be less than 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading('กำลังอัปโหลดรูป... / Uploading image...');
+
+    try {
+      const storageRef = ref(storage, `staff-avatars/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      setFormData(prev => ({ ...prev, avatar: downloadURL }));
+      toast.success('อัปโหลดสำเร็จ / Image uploaded successfully', { id: toastId });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('อัปโหลดไม่สำเร็จ / Failed to upload image', { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingStaff) {
+        await updateDoc(doc(db, 'staff', editingStaff.id), {
+          ...formData,
+          updatedAt: serverTimestamp()
+        });
+        toast.success('อัปเดตข้อมูลสำเร็จ / Staff updated successfully');
+      } else {
+        await addDoc(collection(db, 'staff'), {
+          ...formData,
+          createdAt: serverTimestamp()
+        });
+        toast.success('เพิ่มพนักงานใหม่สำเร็จ / New staff added successfully');
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error saving staff:', error);
+      toast.error('บันทึกข้อมูลไม่สำเร็จ / Failed to save staff');
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setStaffToDelete(id);
+    setIsConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!staffToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'staff', staffToDelete));
+      toast.success('ลบพนักงานสำเร็จ / Staff deleted successfully');
+      setIsConfirmOpen(false);
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      toast.error('ลบไม่สำเร็จ / Failed to delete staff');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h3 className="text-4xl font-bold flex items-center gap-4 text-[#2D241E]">
+            <Users size={40} className="text-[#D4AF37]" /> จัดการพนักงาน / Staff Directory
+          </h3>
+          <p className="text-[#2D241E]/70 text-xl mt-2 font-medium">ดูแลทีมงานมืออาชีพของคุณ / Manage your professional team</p>
+        </div>
+        <button 
+          onClick={() => handleOpenModal()}
+          className="bg-[#D4AF37] text-white px-12 py-6 rounded-[2.5rem] font-black text-2xl flex items-center gap-4 hover:scale-105 transition-transform shadow-xl shadow-[#D4AF37]/40 border-b-4 border-[#b8962d]"
+        >
+          <Plus size={32} /> เพิ่มพนักงาน / Add Staff
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {staffList.map((member) => (
+          <motion.div 
+            layout
+            key={member.id}
+            className="bg-white border-2 border-[#2D241E]/5 rounded-[3.5rem] p-10 hover:border-[#D4AF37] transition-all group shadow-2xl"
+          >
+            <div className="flex items-start justify-between mb-10">
+              <div className="flex items-center gap-8">
+                <div className="relative">
+                  <img 
+                    src={member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} 
+                    alt={member.name} 
+                    className="w-28 h-28 rounded-full border-4 border-[#D4AF37]/30 object-cover shadow-xl"
+                  />
+                  <div className={`absolute -bottom-1 -right-1 w-10 h-10 rounded-full border-4 border-white ${member.isActive ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-rose-500 shadow-lg shadow-rose-500/50'}`} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-3xl text-[#2D241E] mb-2">{member.name}</h4>
+                  <p className="text-[#D4AF37] text-lg uppercase tracking-widest font-black">{member.role}</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
-                  disabled={!selectedService || isSubmitting}
-                  onClick={confirmWalkIn}
-                  className="w-full bg-[#2D5A27] text-white text-2xl font-black py-8 rounded-[2rem] shadow-2xl hover:bg-[#1f3f1b] transition-all disabled:bg-stone-200 active:scale-95"
+                  onClick={() => handleOpenModal(member)}
+                  className="p-5 bg-[#FDFBF7] rounded-2xl text-[#2D241E]/40 hover:text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-colors border border-[#2D241E]/10"
                 >
-                  {isSubmitting ? 'PROCESSING...' : 'CONFIRM RESERVATION'}
+                  <Edit2 size={28} />
                 </button>
                 <button 
-                  onClick={() => setShowWalkInModal(false)} 
-                  className="w-full text-stone-400 font-black uppercase tracking-widest text-xs py-2"
+                  onClick={() => handleDeleteClick(member.id)}
+                  className="p-5 bg-[#FDFBF7] rounded-2xl text-[#2D241E]/40 hover:text-rose-600 hover:bg-rose-500/10 transition-colors border border-[#2D241E]/10"
                 >
-                  Close Window
+                  <Trash2 size={28} />
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* MODAL: CANCEL/DELETE */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-2xl flex justify-center items-center p-6 z-50 animate-in zoom-in-95 duration-300 print:hidden">
-          <div className="bg-white rounded-[3.5rem] w-full max-w-md p-12 shadow-2xl text-center border-[6px] border-stone-50">
-            <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
-              <span className="text-rose-500 text-5xl font-black">!</span>
+            <div className="space-y-6 bg-[#FDFBF7] p-8 rounded-[2.5rem] border border-[#2D241E]/5">
+              <div className="flex items-center justify-between text-xl">
+                <span className="text-[#2D241E]/40 font-bold uppercase tracking-wider">สถานะ / Status</span>
+                <span className={`font-black ${member.status === 'Working' ? 'text-green-500' : 'text-[#2D241E]/20'}`}>
+                  {member.status === 'Working' ? 'กำลังทำงาน / Working' : 'พักงาน / Off'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xl">
+                <span className="text-[#2D241E]/40 font-bold uppercase tracking-wider">บัญชี / Account</span>
+                <span className={`px-6 py-2 rounded-full text-sm font-black uppercase ${member.isActive ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}>
+                  {member.isActive ? 'ใช้งานได้ / Active' : 'ปิดใช้งาน / Inactive'}
+                </span>
+              </div>
             </div>
-            <h2 className="text-3xl font-black text-stone-800 uppercase tracking-tighter mb-3">Delete Appointment</h2>
-            <p className="text-stone-500 font-bold mb-10 leading-relaxed">
-              Are you sure you want to remove <br/>
-              <span className="text-[#D4A373] text-2xl font-black uppercase tracking-tight italic">
-                {selectedBooking?.clientName}
-              </span>
-              <br/>จากสมุดคิวของคุณ?
-            </p>
-            <div className="space-y-4">
-              <button 
-                onClick={deleteBooking}
-                disabled={isSubmitting}
-                className="w-full bg-rose-600 text-white text-xl font-black py-7 rounded-[2rem] shadow-xl hover:bg-rose-700 transition-all active:scale-95"
-              >
-                {isSubmitting ? 'REMOVING...' : 'YES, REMOVE NOW'}
-              </button>
-              <button 
-                onClick={() => setShowCancelModal(false)} 
-                className="w-full text-stone-400 font-black uppercase tracking-widest text-xs py-2"
-              >
-                Go Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: SIGNAL CENTER */}
-      {showSignalCenter && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xl flex justify-center items-center p-6 z-50 animate-in fade-in duration-300 print:hidden">
-          <div className="w-full max-w-lg relative">
-            <button 
-              onClick={() => setShowSignalCenter(false)}
-              className="absolute -top-4 -right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl text-stone-400 hover:text-stone-800 transition-all z-10"
-            >
-              ✕
-            </button>
-            <StaffNotificationTrigger />
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: MOBILE PREVIEW */}
-      {showMobilePreview && (
-        <StaffMobileAlert 
-          staffName="Mina"
-          serviceName="60-min Oil Massage"
-          startTime="14:30"
-          onAcknowledge={() => console.log("Acknowledged")}
-          onHeadingBack={() => console.log("Heading Back")}
-          onClose={() => setShowMobilePreview(false)}
-        />
-      )}
-
-      {/* REAL-TIME WEBSITE BOOKING OVERLAY */}
-      <div className="print:hidden">
-        <PendingBookingOverlay staffList={staffList} services={services} />
+          </motion.div>
+        ))}
       </div>
 
+      {/* Staff Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white border-2 border-[#2D241E]/10 rounded-[4rem] p-12 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-50" />
+              
+              <div className="flex justify-between items-center mb-12">
+                <div>
+                  <h2 className="text-4xl font-bold text-[#2D241E]">
+                    {editingStaff ? 'แก้ไขข้อมูลพนักงาน / Edit Staff' : 'เพิ่มพนักงานใหม่ / Add New Staff'}
+                  </h2>
+                  <p className="text-[#2D241E]/60 text-xl mt-2 font-medium">กรอกรายละเอียดพนักงานด้านล่าง / Fill in details below</p>
+                </div>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-6 bg-[#FDFBF7] rounded-3xl text-[#2D241E]/40 hover:text-[#2D241E] transition-colors border border-[#2D241E]/10"
+                >
+                  <X size={36} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-10">
+                <div className="space-y-8">
+                  <div>
+                    <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">ชื่อ-นามสกุล / Full Name</label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-8 top-1/2 -translate-y-1/2 text-[#D4AF37]" size={32} />
+                      <input 
+                        required
+                        type="text" 
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        placeholder="เช่น สมชาย ใจดี / e.g. Somchai Jaidee"
+                        className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 pl-20 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">ตำแหน่ง / Professional Role</label>
+                    <div className="relative">
+                      <Shield className="absolute left-8 top-1/2 -translate-y-1/2 text-[#D4AF37]" size={32} />
+                      <input 
+                        required
+                        type="text" 
+                        value={formData.role}
+                        onChange={(e) => setFormData({...formData, role: e.target.value})}
+                        placeholder="เช่น ช่างนวดอาวุโส / e.g. Senior Therapist"
+                        className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 pl-20 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">รูปถ่ายพนักงาน / Staff Photo</label>
+                    <div className="flex items-center gap-10 p-8 bg-[#FDFBF7] rounded-[3rem] border-2 border-[#2D241E]/10">
+                      <div className="relative group">
+                        <div className="w-40 h-40 rounded-full border-4 border-[#D4AF37]/30 overflow-hidden bg-white flex items-center justify-center shadow-xl">
+                          {formData.avatar ? (
+                            <img src={formData.avatar} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <UserIcon className="text-[#2D241E]/10" size={64} />
+                          )}
+                        </div>
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                            <Loader2 className="text-[#D4AF37] animate-spin" size={48} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 space-y-5">
+                        <input 
+                          type="file" 
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          className="hidden" 
+                          accept="image/*"
+                        />
+                        <button 
+                          type="button"
+                          disabled={isUploading}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full py-6 bg-white border-2 border-[#2D241E]/10 rounded-3xl text-xl font-black uppercase tracking-widest text-[#2D241E] hover:bg-gray-50 transition-all flex items-center justify-center gap-4 disabled:opacity-50 shadow-sm"
+                        >
+                          <Camera size={32} className="text-[#D4AF37]" />
+                          {formData.avatar ? 'เปลี่ยนรูป / Change' : 'อัปโหลดรูป / Upload'}
+                        </button>
+                        <p className="text-sm text-[#2D241E]/40 uppercase tracking-widest text-center font-bold">ขนาดสูงสุด: 2MB (JPG, PNG)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-8 bg-[#FDFBF7] rounded-[2.5rem] border-2 border-[#2D241E]/10">
+                    <div className="flex items-center gap-6">
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${formData.isActive ? 'bg-green-500/20 text-green-600' : 'bg-rose-500/20 text-rose-600'}`}>
+                        {formData.isActive ? <Check size={40} /> : <AlertCircle size={40} />}
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-[#2D241E]">สถานะบัญชี / Account Status</p>
+                        <p className="text-sm text-[#2D241E]/50 uppercase tracking-widest font-bold">อนุญาตให้พนักงานเข้าระบบ / Allow login</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, isActive: !formData.isActive})}
+                      className={`w-20 h-10 rounded-full transition-colors relative ${formData.isActive ? 'bg-green-500' : 'bg-gray-200'}`}
+                    >
+                      <div className={`absolute top-1 w-8 h-8 bg-white rounded-full transition-all shadow-md ${formData.isActive ? 'left-11' : 'left-1'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-8 pt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 py-7 bg-gray-100 rounded-[2.5rem] font-black text-2xl uppercase tracking-widest text-[#2D241E]/60 hover:bg-gray-200 hover:text-[#2D241E] transition-all border-2 border-gray-200"
+                  >
+                    ยกเลิก / Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-[1.5] py-7 bg-[#D4AF37] text-white rounded-[2.5rem] font-black text-2xl uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#D4AF37]/30 border-b-4 border-[#b8962d]"
+                  >
+                    {editingStaff ? 'อัปเดตข้อมูล / Update' : 'สร้างพนักงาน / Create'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="คุณแน่ใจใช่ไหม? / Are you sure?"
+        message="การลบข้อมูลนี้จะไม่สามารถกู้คืนได้ / This action cannot be undone."
+      />
+    </div>
+  );
+};
+
+// Component ย่อย: เนื้อหาหน้า Bookings Management
+const BookingsContent = ({ bookings }: { bookings: Booking[] }) => {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [bookingToUpdate, setBookingToUpdate] = useState<{id: string, status: string} | null>(null);
+
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    setBookingToUpdate({ id, status: newStatus });
+    setIsConfirmOpen(true);
+  };
+
+  const confirmUpdate = async () => {
+    if (!bookingToUpdate) return;
+    try {
+      await updateDoc(doc(db, 'bookings', bookingToUpdate.id), {
+        status: bookingToUpdate.status,
+        updatedAt: serverTimestamp()
+      });
+      toast.success('อัปเดตสถานะสำเร็จ / Status updated successfully');
+      setIsConfirmOpen(false);
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error('อัปเดตไม่สำเร็จ / Failed to update status');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-12">
+        <div>
+          <h3 className="text-4xl font-bold flex items-center gap-4 text-[#2D241E]">
+            <Calendar size={40} className="text-[#D4AF37]" /> รายการจองทั้งหมด / All Bookings
+          </h3>
+          <p className="text-[#2D241E]/70 text-xl mt-2 font-medium">จัดการคิวและสถานะการจอง / Manage queues and statuses</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto bg-white border-2 border-[#2D241E]/5 rounded-[3.5rem] shadow-2xl">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b-2 border-[#2D241E]/5 bg-[#FDFBF7]">
+              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">ลูกค้า / Customer</th>
+              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">บริการ / Service</th>
+              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">วัน-เวลา / Date-Time</th>
+              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">สถานะ / Status</th>
+              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black text-center">จัดการ / Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#2D241E]/5">
+            {bookings.map((booking) => (
+              <tr key={booking.id} className="hover:bg-[#FDFBF7] transition-colors">
+                <td className="px-10 py-8">
+                  <p className="text-2xl font-bold text-[#2D241E]">{booking.clientName}</p>
+                  <p className="text-lg text-[#2D241E]/40 font-medium">{booking.clientPhone}</p>
+                </td>
+                <td className="px-10 py-8">
+                  <p className="text-xl font-bold text-[#2D241E]">{booking.serviceName}</p>
+                  <p className="text-3xl text-[#D4AF37] font-black">${(booking.price || booking.subtotal || 0).toLocaleString()} <span className="text-lg opacity-50">AUD</span></p>
+                </td>
+                <td className="px-10 py-8">
+                  <p className="text-xl font-bold text-[#2D241E]">{booking.date}</p>
+                  <p className="text-lg text-[#2D241E]/40 font-medium">{booking.startTime}</p>
+                </td>
+                <td className="px-10 py-8">
+                  <span className={`px-6 py-2 rounded-full text-sm font-black uppercase border-2 ${
+                    booking.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                    booking.status === 'confirmed' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                    booking.status === 'cancelled' ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                    'bg-amber-100 text-amber-700 border-amber-200'
+                  }`}>
+                    {booking.status === 'completed' ? 'เสร็จสิ้น / Completed' : 
+                     booking.status === 'confirmed' ? 'ยืนยันแล้ว / Confirmed' : 
+                     booking.status === 'cancelled' ? 'ยกเลิกแล้ว / Cancelled' : 
+                     'รอดำเนินการ / Pending'}
+                  </span>
+                </td>
+                <td className="px-10 py-8">
+                  <div className="flex gap-4 justify-center">
+                    {booking.status === 'pending' && (
+                      <button 
+                        onClick={() => handleStatusUpdate(booking.id, 'confirmed')}
+                        className="p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/30"
+                        title="ยืนยัน / Confirm"
+                      >
+                        <Check size={32} />
+                      </button>
+                    )}
+                    {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                      <button 
+                        onClick={() => handleStatusUpdate(booking.id, 'completed')}
+                        className="p-5 bg-green-600 text-white rounded-2xl hover:bg-green-500 transition-all shadow-lg shadow-green-600/30"
+                        title="เสร็จสิ้น / Complete"
+                      >
+                        <CheckCircle2 size={32} />
+                      </button>
+                    )}
+                    {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                      <button 
+                        onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
+                        className="p-5 bg-rose-600 text-white rounded-2xl hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/30"
+                        title="ยกเลิก / Cancel"
+                      >
+                        <X size={32} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmUpdate}
+        title="เปลี่ยนสถานะ? / Change Status?"
+        message="คุณแน่ใจใช่ไหมที่จะเปลี่ยนสถานะการจองนี้? / Are you sure you want to change this booking status?"
+      />
+    </div>
+  );
+};
+
+// Component ย่อย: หน้าต่างตั้งค่าร้าน
+const SettingsContent = () => {
+  const [shopInfo, setShopInfo] = useState({
+    name: 'Mira Royale Spa',
+    phone: '02-123-4567',
+    address: '123 Sukhumvit Road, Bangkok',
+    openTime: '10:00',
+    closeTime: '22:00'
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'shop'), (docSnap) => {
+      if (docSnap.exists()) {
+        setShopInfo(docSnap.data() as any);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      await setDoc(doc(db, 'settings', 'shop'), {
+        ...shopInfo,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      toast.success('บันทึกการตั้งค่าแล้ว / Settings saved successfully');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('บันทึกไม่สำเร็จ / Failed to save settings');
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#D4AF37]" size={40} /></div>;
+
+  return (
+    <div className="max-w-4xl">
+      <div className="mb-12">
+        <h3 className="text-4xl font-bold flex items-center gap-4 text-[#2D241E]">
+          <Settings size={40} className="text-[#D4AF37]" /> ตั้งค่าร้าน / Shop Settings
+        </h3>
+        <p className="text-[#2D241E]/70 text-xl mt-2 font-medium">ปรับแต่งข้อมูลพื้นฐานของร้านคุณ / Customize your shop details</p>
+      </div>
+
+      <div className="space-y-10 bg-white border-2 border-[#2D241E]/5 rounded-[4rem] p-12 shadow-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div>
+            <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">ชื่อร้าน / Shop Name</label>
+            <input 
+              type="text" 
+              value={shopInfo.name}
+              onChange={(e) => setShopInfo({...shopInfo, name: e.target.value})}
+              className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">เบอร์โทรศัพท์ / Phone Number</label>
+            <input 
+              type="text" 
+              value={shopInfo.phone}
+              onChange={(e) => setShopInfo({...shopInfo, phone: e.target.value})}
+              className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">ที่อยู่ / Address</label>
+          <textarea 
+            rows={3}
+            value={shopInfo.address}
+            onChange={(e) => setShopInfo({...shopInfo, address: e.target.value})}
+            className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none resize-none"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div>
+            <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">เวลาเปิด / Open Time</label>
+            <input 
+              type="time" 
+              value={shopInfo.openTime}
+              onChange={(e) => setShopInfo({...shopInfo, openTime: e.target.value})}
+              className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-lg uppercase tracking-[0.1em] text-[#2D241E]/40 mb-4 ml-6 font-black">เวลาปิด / Close Time</label>
+            <input 
+              type="time" 
+              value={shopInfo.closeTime}
+              onChange={(e) => setShopInfo({...shopInfo, closeTime: e.target.value})}
+              className="w-full bg-[#FDFBF7] border-2 border-[#2D241E]/10 rounded-[2.5rem] py-7 px-10 text-2xl font-bold text-[#2D241E] focus:ring-4 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] transition-all outline-none"
+            />
+          </div>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          className="w-full py-7 bg-[#D4AF37] text-white rounded-[2.5rem] font-black text-3xl uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#D4AF37]/30 mt-6 border-b-4 border-[#b8962d]"
+        >
+          บันทึกการตั้งค่า / Save Settings
+        </button>
+      </div>
     </div>
   );
 };
 
 export default V4Dashboard;
-

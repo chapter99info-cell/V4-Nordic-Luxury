@@ -25,6 +25,7 @@ export interface Service {
   bestFor: string;
   keyBenefits: string[];
   isActive: boolean;
+  badge?: string;
 }
 
 export interface PromoSettings {

@@ -5,7 +5,7 @@
 
 @layer base {
   body {
-    @apply bg-white text-earth antialiased;
+    @apply bg-[#FDFBF7] text-earth antialiased;
   }
 }
 

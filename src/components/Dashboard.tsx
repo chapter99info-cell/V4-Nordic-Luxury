@@ -368,7 +368,11 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
           <div className="flex items-center gap-4 bg-primary/5 px-8 py-4 rounded-[2rem] border border-primary/10 shadow-sm print:hidden">
             <div className="text-right">
               <p className="text-[10px] font-bold text-primary/40 uppercase tracking-[0.2em]">Today's Revenue</p>
-              <p className="text-2xl font-serif font-bold text-primary">TODAY'S REVENUE: $1,250.00</p>
+              <p className="text-2xl font-serif font-bold text-primary">
+                <span className="text-3xl font-black mr-1">$</span>
+                1,250.00
+                <span className="text-sm ml-2 opacity-60">AUD</span>
+              </p>
             </div>
             <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
               <DollarSign size={24} />
@@ -424,7 +428,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
       {/* Stats Grid - 4 Column Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 print:hidden">
         {[
-          { label: 'Monthly Revenue', value: `$${stats.revenue.toLocaleString()}`, icon: DollarSign, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Monthly Revenue', value: `$${stats.revenue.toLocaleString()} AUD`, icon: DollarSign, color: 'bg-emerald-50 text-emerald-600' },
           { label: 'Monthly Bookings', value: stats.bookingsCount, icon: CalendarIcon, color: 'bg-amber-50 text-amber-600' },
           { label: 'Unique Clients', value: stats.uniqueClients, icon: Users, color: 'bg-blue-50 text-blue-600' },
           { label: 'Active Staff', value: stats.activeStaff, icon: Clock, color: 'bg-rose-50 text-rose-600' },
@@ -498,7 +502,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
                 {topServices.map((s, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-section rounded-2xl">
                     <span className="text-xs font-bold text-primary">{s.name}</span>
-                    <span className="text-xs font-serif font-bold text-secondary">${s.revenue.toLocaleString()}</span>
+                    <span className="text-xs font-serif font-bold text-secondary">${s.revenue.toLocaleString()} AUD</span>
                   </div>
                 ))}
               </div>
@@ -666,7 +670,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
               <div className="space-y-1">
                 <p className="text-[9px] font-bold text-earth/60 truncate">{booking.serviceName}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-[8px] font-bold text-secondary">${booking.price}</span>
+                  <span className="text-[8px] font-bold text-secondary">${booking.price} AUD</span>
                   <span className={`text-[7px] font-bold uppercase px-1.5 py-0.5 rounded ${
                     booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 
                     booking.status === 'cancelled' ? 'bg-rose-50 text-rose-600' : 
@@ -775,9 +779,9 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
                       {booking.paymentMethod || 'Cash'}
                     </span>
                   </td>
-                  <td className="py-4 text-xs text-earth/60">${(booking.subtotal || booking.price).toLocaleString()}</td>
-                  <td className="py-4 text-xs text-rose-500">-${(booking.discount || 0).toLocaleString()}</td>
-                  <td className="py-4 text-xs font-bold text-primary">${booking.price.toLocaleString()}</td>
+                  <td className="py-4 text-xs text-earth/60">${(booking.subtotal || booking.price).toLocaleString()} AUD</td>
+                  <td className="py-4 text-xs text-rose-500">-${(booking.discount || 0).toLocaleString()} AUD</td>
+                  <td className="py-4 text-xs font-bold text-primary">${booking.price.toLocaleString()} AUD</td>
                   <td className="py-4">
                     <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${
                       booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 

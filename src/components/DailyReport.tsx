@@ -120,12 +120,12 @@ export const DailyReport: React.FC<DailyReportProps> = ({ config, role }) => {
     const dateStr = format(selectedDate, 'dd/MM/yyyy');
     const message = `📊 สรุปยอดขายประจำวัน (${dateStr})\n` +
       `--------------------------\n` +
-      `💰 ยอดรวม: ${formatCurrency(stats.total)}\n` +
-      `💵 เงินสด: ${formatCurrency(stats.cash)}\n` +
-      `📱 โอนเงิน: ${formatCurrency(stats.transfer)}\n` +
-      `💳 บัตร: ${formatCurrency(stats.card)}\n\n` +
+      `💰 ยอดรวม: ${formatCurrency(stats.total)} AUD\n` +
+      `💵 เงินสด: ${formatCurrency(stats.cash)} AUD\n` +
+      `📱 โอนเงิน: ${formatCurrency(stats.transfer)} AUD\n` +
+      `💳 บัตร: ${formatCurrency(stats.card)} AUD\n\n` +
       `👥 พนักงาน:\n` +
-      stats.staffBreakdown.map(s => `- ${s.name}: ${s.count} คิว (${formatCurrency(s.revenue)})`).join('\n');
+      stats.staffBreakdown.map(s => `- ${s.name}: ${s.count} คิว (${formatCurrency(s.revenue)} AUD)`).join('\n');
     
     try {
       await sendLineNotification(message);
@@ -193,7 +193,9 @@ export const DailyReport: React.FC<DailyReportProps> = ({ config, role }) => {
                   <span className="text-sm font-black uppercase tracking-[0.2em]">ยอดขายรวมทั้งหมด</span>
                 </div>
                 <h3 className="text-5xl md:text-6xl font-black tracking-tighter mb-2">
-                  {formatCurrency(stats.total)}
+                  <span className="text-3xl font-black mr-1">$</span>
+                  {(stats.total).toLocaleString()}
+                  <span className="text-sm ml-2 opacity-60">AUD</span>
                 </h3>
                 <p className="text-white/60 font-bold">{bookings.length} รายการที่เสร็จสิ้น</p>
               </div>
@@ -208,7 +210,9 @@ export const DailyReport: React.FC<DailyReportProps> = ({ config, role }) => {
                   <span className="text-sm font-black uppercase tracking-[0.2em]">ยอดเงินสด</span>
                 </div>
                 <h3 className="text-5xl font-black text-primary tracking-tighter mb-2">
-                  {formatCurrency(stats.cash)}
+                  <span className="text-3xl font-black mr-1">$</span>
+                  {(stats.cash).toLocaleString()}
+                  <span className="text-sm ml-2 opacity-60">AUD</span>
                 </h3>
                 <p className="text-earth/40 font-bold">รับเงินสดหน้าร้าน</p>
               </div>
@@ -223,7 +227,9 @@ export const DailyReport: React.FC<DailyReportProps> = ({ config, role }) => {
                   <span className="text-sm font-black uppercase tracking-[0.2em]">ยอดเงินโอน</span>
                 </div>
                 <h3 className="text-5xl font-black text-primary tracking-tighter mb-2">
-                  {formatCurrency(stats.transfer)}
+                  <span className="text-3xl font-black mr-1">$</span>
+                  {(stats.transfer).toLocaleString()}
+                  <span className="text-sm ml-2 opacity-60">AUD</span>
                 </h3>
                 <p className="text-earth/40 font-bold">โอนผ่านธนาคาร/QR</p>
               </div>
@@ -264,7 +270,7 @@ export const DailyReport: React.FC<DailyReportProps> = ({ config, role }) => {
                     </div>
                     <div className="text-right">
                       <p className="text-3xl font-black text-primary tracking-tighter">
-                        {formatCurrency(staff.revenue)}
+                        {formatCurrency(staff.revenue)} AUD
                       </p>
                       <p className="text-[10px] font-black text-sage uppercase tracking-[0.2em]">
                         ยอดทำเงินให้ร้าน

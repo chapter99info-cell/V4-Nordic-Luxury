@@ -31,7 +31,7 @@ export const Statics: React.FC = () => {
       <h2 className="text-3xl font-serif font-bold text-earth">Statistics</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={<DollarSign size={24} />} label="Total Revenue" value="$12,450" color="bg-primary" />
+        <StatCard icon={<DollarSign size={24} />} label="Total Revenue" value="$12,450 AUD" color="bg-primary" />
         <StatCard icon={<Users size={24} />} label="Total Customers" value="342" color="bg-earth" />
         <StatCard icon={<TrendingUp size={24} />} label="Growth Rate" value="+12.5%" color="bg-green-500" />
         <StatCard icon={<BarChart2 size={24} />} label="Avg. Session" value="45 min" color="bg-blue-500" />
@@ -63,7 +63,7 @@ export const Statics: React.FC = () => {
                   className="w-full max-w-[20px] bg-primary rounded-t-full relative group-hover:bg-primary/80 transition-colors"
                 >
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-earth text-white text-[10px] font-bold px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                    ${s.amount}
+                    ${s.amount} AUD
                   </div>
                 </motion.div>
                 <motion.div 

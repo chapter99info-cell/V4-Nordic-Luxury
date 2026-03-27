@@ -3,7 +3,11 @@ import { motion } from 'motion/react';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiService } from '../services/api';
 
-export const QuickBookingForm: React.FC = () => {
+interface QuickBookingFormProps {
+  isBookingOpen?: boolean;
+}
+
+export const QuickBookingForm: React.FC<QuickBookingFormProps> = ({ isBookingOpen = true }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -108,7 +112,7 @@ export const QuickBookingForm: React.FC = () => {
                   <label className="block text-[#4A5D23] text-[10px] font-bold uppercase tracking-widest">Full Name</label>
                   <input 
                     type="text" 
-                    placeholder="Your name"
+                    placeholder="Enter your name"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -146,10 +150,11 @@ export const QuickBookingForm: React.FC = () => {
                     onChange={(e) => setFormData({...formData, service: e.target.value})}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm focus:outline-none"
                   >
-                    <option value="Remedial">Remedial Massage ($100)</option>
-                    <option value="Thai">Traditional Thai ($95)</option>
-                    <option value="Deep Tissue">Deep Tissue ($110)</option>
-                    <option value="Aroma Oil">Aroma Oil ($90)</option>
+                    <option value="Remedial">Remedial Massage ($100 AUD)</option>
+                    <option value="Thai">Thai Traditional ($90 AUD)</option>
+                    <option value="Aroma Oil">Aromatherapy Oil ($95 AUD)</option>
+                    <option value="Foot">Foot Reflexology ($60 AUD)</option>
+                    <option value="Deep Tissue">Deep Tissue ($65 AUD)</option>
                   </select>
                 </div>
 
@@ -157,7 +162,7 @@ export const QuickBookingForm: React.FC = () => {
                   <label className="block text-[#4A5D23] text-[10px] font-bold uppercase tracking-widest">Special Requests</label>
                   <textarea 
                     rows={2}
-                    placeholder="Tell us about your pain or preferences..."
+                    placeholder="Tell us about any pain or special needs..."
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm focus:outline-none resize-none"
@@ -166,10 +171,14 @@ export const QuickBookingForm: React.FC = () => {
 
                 <button 
                   type="submit"
-                  disabled={status === 'loading'}
-                  className="w-full bg-[#4A5D23] text-white py-5 rounded-xl font-bold text-sm uppercase tracking-[0.2em] hover:bg-[#3a4a1c] active:scale-95 disabled:opacity-50 transition-all shadow-lg shadow-[#4A5D23]/20 print:hidden"
+                  disabled={status === 'loading' || !isBookingOpen}
+                  className={`w-full py-5 rounded-xl font-bold text-sm uppercase tracking-[0.2em] transition-all shadow-lg print:hidden ${
+                    isBookingOpen 
+                      ? 'bg-[#4A5D23] text-white hover:bg-[#3a4a1c] active:scale-95 shadow-[#4A5D23]/20' 
+                      : 'bg-zinc-400 text-white/80 cursor-not-allowed'
+                  }`}
                 >
-                  {status === 'loading' ? 'Sending Data...' : 'CONFIRM BOOKING'}
+                  {status === 'loading' ? 'Sending...' : (isBookingOpen ? 'CONFIRM BOOKING' : 'FULLY BOOKED')}
                 </button>
 
                 {status === 'success' && (
@@ -180,7 +189,7 @@ export const QuickBookingForm: React.FC = () => {
 
                 {status === 'error' && (
                   <motion.div initial={{opacity:0}} animate={{opacity:1}} className="flex items-center justify-center gap-2 text-red-600 font-bold mt-4">
-                    <AlertCircle size={18} /> Connection error. Try again.
+                    <AlertCircle size={18} /> Connection error.
                   </motion.div>
                 )}
               </form>

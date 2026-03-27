@@ -66,10 +66,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
       setNewName('');
       setNewRole('');
       setNewLabel('');
-      setFeedback({ status: 'success', msg: 'เพิ่มพนักงานเรียบร้อยแล้ว' });
+      setFeedback({ status: 'success', msg: 'เพิ่มพนักงานเรียบร้อยแล้วค่ะ' });
       setTimeout(() => setFeedback(null), 3000);
     } catch (error) {
-      setFeedback({ status: 'error', msg: 'เกิดข้อผิดพลาดในการเพิ่มพนักงาน' });
+      setFeedback({ status: 'error', msg: 'เกิดข้อผิดพลาดในการเพิ่มพนักงานค่ะ' });
     }
   };
 
@@ -79,7 +79,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
         isActive: !currentStatus
       });
     } catch (error) {
-      setFeedback({ status: 'error', msg: 'ไม่สามารถเปลี่ยนสถานะได้' });
+      setFeedback({ status: 'error', msg: 'ไม่สามารถเปลี่ยนสถานะได้ค่ะ' });
     }
   };
 
@@ -88,10 +88,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
     try {
       await deleteDoc(doc(db, 'staff', deleteConfirm));
       setDeleteConfirm(null);
-      setFeedback({ status: 'success', msg: 'ลบรายชื่อพนักงานเรียบร้อยแล้ว' });
+      setFeedback({ status: 'success', msg: 'ลบรายชื่อพนักงานเรียบร้อยแล้วค่ะ' });
       setTimeout(() => setFeedback(null), 3000);
     } catch (error) {
-      setFeedback({ status: 'error', msg: 'ไม่สามารถลบข้อมูลได้' });
+      setFeedback({ status: 'error', msg: 'ไม่สามารถลบข้อมูลได้ค่ะ' });
     }
   };
 
@@ -107,10 +107,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
         avatar: editingStaff.imageUrl || editingStaff.avatar
       });
       setEditingStaff(null);
-      setFeedback({ status: 'success', msg: 'แก้ไขข้อมูลพนักงานเรียบร้อยแล้ว' });
+      setFeedback({ status: 'success', msg: 'แก้ไขข้อมูลพนักงานเรียบร้อยแล้วค่ะ' });
       setTimeout(() => setFeedback(null), 3000);
     } catch (error) {
-      setFeedback({ status: 'error', msg: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูล' });
+      setFeedback({ status: 'error', msg: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลค่ะ' });
     }
   };
 
@@ -133,11 +133,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
         setEditingStaff({ ...editingStaff, imageUrl: downloadURL, avatar: downloadURL });
       }
 
-      setFeedback({ status: 'success', msg: 'อัปโหลดรูปภาพเรียบร้อยแล้ว' });
+      setFeedback({ status: 'success', msg: 'อัปโหลดรูปภาพเรียบร้อยแล้วค่ะ' });
       setTimeout(() => setFeedback(null), 3000);
     } catch (error) {
       console.error("Upload error:", error);
-      setFeedback({ status: 'error', msg: 'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ' });
+      setFeedback({ status: 'error', msg: 'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพค่ะ' });
     } finally {
       setUploading(false);
     }
@@ -147,8 +147,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
     <div className="max-w-6xl mx-auto space-y-12 pb-20">
       {/* Header Section */}
       <div className="text-center space-y-2">
-        <h2 className="text-4xl font-serif font-bold text-primary">จัดการพนักงาน</h2>
-        <p className="text-earth/60 text-lg">เพิ่มหรือพักงานพนักงานของคุณได้ที่นี่</p>
+        <h2 className="text-4xl font-serif font-bold text-primary">จัดการพนักงานค่ะ</h2>
+        <p className="text-earth/60 text-lg">เพิ่มหรือพักงานพนักงานของคุณได้ที่นี่ค่ะ</p>
       </div>
 
       {/* Add New Staff Form - Large & Clear */}
@@ -234,18 +234,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
 
       {/* Staff List Grid Cards */}
       <div className="space-y-8">
-        <h3 className="text-3xl font-serif font-bold text-primary px-4">รายชื่อพนักงานทั้งหมด</h3>
+        <h3 className="text-3xl font-serif font-bold text-primary px-4">รายชื่อพนักงานทั้งหมดค่ะ</h3>
         
         {loading ? (
           <div className="p-20 flex flex-col items-center justify-center gap-4">
             <Loader2 className="animate-spin text-primary" size={64} />
-            <p className="text-xl font-bold text-primary/40">กำลังโหลดข้อมูล...</p>
+            <p className="text-xl font-bold text-primary/40">กำลังโหลดข้อมูลอยู่ค่ะ...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {staff.length === 0 ? (
               <div className="col-span-full p-20 text-center bg-white rounded-[3rem] border-4 border-dashed border-beige/30">
-                <p className="text-2xl font-bold text-earth/20">ยังไม่มีรายชื่อพนักงานในระบบ</p>
+                <p className="text-2xl font-bold text-earth/20">ยังไม่มีรายชื่อพนักงานในระบบค่ะ</p>
               </div>
             ) : (
               staff.map((member) => (
@@ -351,10 +351,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
               </div>
               
               <div className="space-y-4">
-                <h3 className="text-4xl font-bold text-primary">ยืนยันการลบ?</h3>
+                <h3 className="text-4xl font-bold text-primary">ยืนยันการลบไหมคะ?</h3>
                 <p className="text-2xl text-earth/60 font-medium">
-                  ต้องการลบชื่อนี้ออกจากร้านใช่หรือไม่? <br/>
-                  <span className="text-rose-500 font-bold">(ข้อมูลจะหายไปถาวร)</span>
+                  ต้องการลบชื่อนี้ออกจากร้านใช่ไหมคะ? <br/>
+                  <span className="text-rose-500 font-bold">(ข้อมูลจะหายไปถาวรค่ะ)</span>
                 </p>
               </div>
 
@@ -363,13 +363,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
                   onClick={() => setDeleteConfirm(null)}
                   className="py-6 rounded-[2rem] text-2xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
                 >
-                  ยกเลิก
+                  ยกเลิกค่ะ
                 </button>
                 <button 
                   onClick={confirmDelete}
                   className="py-6 rounded-[2rem] text-2xl font-bold bg-rose-500 text-white hover:bg-rose-600 transition-all shadow-xl shadow-rose-200"
                 >
-                  ใช่, ลบเลย
+                  ใช่ค่ะ ลบเลย
                 </button>
               </div>
               
@@ -467,13 +467,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ config }) => {
                     onClick={() => setEditingStaff(null)}
                     className="py-6 rounded-[2rem] text-2xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
                   >
-                    ยกเลิก
+                    ยกเลิกค่ะ
                   </button>
                   <button 
                     type="submit"
                     className="py-6 rounded-[2rem] text-2xl font-bold bg-primary text-white hover:bg-sage transition-all shadow-xl shadow-primary/20"
                   >
-                    บันทึกข้อมูล
+                    บันทึกข้อมูลค่ะ
                   </button>
                 </div>
               </form>
