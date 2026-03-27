@@ -45,6 +45,7 @@ export interface Staff {
   locationStatus?: 'At the Beach' | 'In-Store';
   isActive: boolean;
   fcmToken?: string;
+  createdAt?: string;
 }
 
 export interface Holiday {

@@ -1,37 +1,69 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const port = process.env.PORT || 8080;
+const express = require("express");
+const path = require("path");
+const dotenv = require("dotenv");
 
-const server = http.createServer((req, res) => {
-  // บอกให้คนขับรถ วิ่งไปเอาไฟล์ในโฟลเดอร์ dist มาโชว์
-  let filePath = path.join(__dirname, 'dist', req.url === '/' ? 'index.html' : req.url);
-  const extname = path.extname(filePath);
-  let contentType = 'text/html';
-  
-  switch (extname) {
-    case '.js': contentType = 'text/javascript'; break;
-    case '.css': contentType = 'text/css'; break;
-    case '.json': contentType = 'application/json'; break;
-    case '.png': contentType = 'image/png'; break;
-    case '.jpg': contentType = 'image/jpg'; break;
-    case '.svg': contentType = 'image/svg+xml'; break;
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+
+// API Routes
+app.post("/api/webhook/google-script", async (req, res) => {
+  let googleScriptUrl = process.env.GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyy5PaAAflJzCGGz6U7TdszDHPv82NC45Eo3kzHk4kbGkVFVn2tiNYn2SGfrknM0zNBbA/exec';
+  try {
+    const response = await fetch(googleScriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to trigger webhook" });
+  }
+});
+
+app.post("/api/notify/line", async (req, res) => {
+  const { token, message } = req.body;
+  try {
+    const response = await fetch("https://notify-api.line.me/api/notify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: new URLSearchParams({ message }).toString(),
+    });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to send LINE notification" });
+  }
+});
+
+// Serve static files
+const distPath = path.join(__dirname, "dist");
+
+async function startServer() {
+  if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = require("vite");
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(distPath));
+    app.get("*all", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
   }
 
-  fs.readFile(filePath, (error, content) => {
-    if (error) {
-      // ถ้าหาไฟล์ไม่เจอ ให้ส่งหน้าหลัก (index.html) ไปให้เสมอ
-      fs.readFile(path.join(__dirname, 'dist', 'index.html'), (err, indexContent) => {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(indexContent, 'utf-8');
-      });
-    } else {
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
-    }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server is ready! Let’s go Forestville! Running on port ${PORT}`);
   });
-});
+}
 
-server.listen(port, () => {
-  console.log('Server is ready! Let’s go Forestville!');
-});
+startServer();
