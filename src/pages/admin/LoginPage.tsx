@@ -24,11 +24,28 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (showStaffSelection) {
-      const q = query(collection(db, 'staff'), where('isActive', '==', true));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setActiveStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff)));
-      });
-      return () => unsubscribe();
+      try {
+        const savedData = localStorage.getItem('mira_staff_data');
+        console.log("Current Staff in Storage (Login):", savedData);
+        if (savedData) {
+          const staffList = JSON.parse(savedData);
+          // Filter active staff and map fields to match the UI expectations
+          const filtered = staffList
+            .filter((s: any) => s.isActive === true || s.status === 'Active' || s.status === 'Working')
+            .map((s: any) => ({
+              ...s,
+              name: s.nameEn || s.name, // Support both structures
+              avatar: s.photo || s.avatar || `https://picsum.photos/seed/${s.id}/400/400`,
+              role: s.position || s.role || 'Therapist'
+            }));
+          setActiveStaff(filtered);
+        } else {
+          setActiveStaff([]);
+        }
+      } catch (error) {
+        console.error("Error loading staff for login:", error);
+        setActiveStaff([]);
+      }
     }
   }, [showStaffSelection]);
 
@@ -218,7 +235,10 @@ export const LoginPage: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
               {activeStaff.length === 0 ? (
-                <p className="text-white/30 py-10">No active staff found</p>
+                <div className="py-10">
+                  <p className="text-white/30 mb-4">No active staff found</p>
+                  <p className="text-[#D4AF37] text-xs font-bold">Please add staff in Admin section first.</p>
+                </div>
               ) : (
                 activeStaff.map((staff) => (
                   <button

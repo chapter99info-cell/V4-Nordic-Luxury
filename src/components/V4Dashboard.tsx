@@ -55,13 +55,33 @@ const V4Dashboard: React.FC = () => {
       setBookings(data);
     });
 
-    // Fetch Staff
-    const qStaff = query(collection(db, 'staff'), orderBy('name', 'asc'));
-    const unsubscribeStaff = onSnapshot(qStaff, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
-      setStaff(data);
-      setLoading(false);
-    });
+    // Fetch Staff from LocalStorage
+    const loadStaff = () => {
+      try {
+        const savedData = localStorage.getItem('mira_staff_data');
+        if (savedData) {
+          const staffData = JSON.parse(savedData);
+          const mappedStaff = staffData.map((s: any) => ({
+            ...s,
+            name: s.nameEn || s.name,
+            avatar: s.photo || s.avatar,
+            role: s.position || s.role,
+            isActive: s.isActive !== undefined ? s.isActive : true
+          }));
+          setStaff(mappedStaff);
+        } else {
+          setStaff([]);
+        }
+      } catch (error) {
+        console.error("Error loading staff in V4Dashboard:", error);
+        setStaff([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStaff();
+    window.addEventListener('storage', loadStaff);
 
     // Listen for Check-in Notifications
     const qCheckIn = query(
@@ -95,7 +115,7 @@ const V4Dashboard: React.FC = () => {
     return () => {
       unsubscribeBooking();
       unsubscribeBookings();
-      unsubscribeStaff();
+      window.removeEventListener('storage', loadStaff);
       unsubscribeCheckIn();
     };
   }, []);
@@ -137,7 +157,7 @@ const V4Dashboard: React.FC = () => {
     .filter(b => b.date === todayStr && (b.status === 'completed' || b.status === 'confirmed'))
     .reduce((sum, b) => sum + (b.price || b.subtotal || 0), 0);
   
-  const activeStaffCount = staff.filter(s => s.status === 'Working' && s.isActive).length;
+  const activeStaffCount = staff.filter(s => s.isActive).length;
   const totalBookingsCount = bookings.length;
 
   // ฟังก์ชัน Logout

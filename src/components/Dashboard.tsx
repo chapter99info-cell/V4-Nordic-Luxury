@@ -279,12 +279,31 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
       setTherapistPerformance(performance);
     });
 
-    // Fetch Staff
-    const staffQ = query(collection(db, 'staff'));
-    const unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
-      setStaff(docs);
-    });
+    // Fetch Staff from LocalStorage
+    const loadStaff = () => {
+      try {
+        const savedData = localStorage.getItem('mira_staff_data');
+        if (savedData) {
+          const staffData = JSON.parse(savedData);
+          const mappedStaff = staffData.map((s: any) => ({
+            ...s,
+            name: s.nameEn || s.name,
+            avatar: s.photo || s.avatar,
+            role: s.position || s.role,
+            isActive: s.isActive !== undefined ? s.isActive : true
+          }));
+          setStaff(mappedStaff);
+        } else {
+          setStaff([]);
+        }
+      } catch (error) {
+        console.error("Error loading staff in Dashboard:", error);
+        setStaff([]);
+      }
+    };
+
+    loadStaff();
+    window.addEventListener('storage', loadStaff);
 
     // Fetch 5 Recent Bookings (by creation time)
     const recentQ = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'), limit(5));
@@ -295,7 +314,7 @@ export const Dashboard: React.FC<{ onBook: (service?: any) => void; role?: strin
 
     return () => {
       unsubscribe();
-      unsubscribeStaff();
+      window.removeEventListener('storage', loadStaff);
       unsubscribeRecent();
     };
   }, []);

@@ -66,14 +66,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
     return () => unsubscribe();
   }, [config?.shopId]);
 
-  // Fetch Staff
+  // Fetch Staff from LocalStorage
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const q = query(collection(db, 'staff'), where('isActive', '==', true));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff)));
-    });
-    return () => unsubscribe();
+    const loadStaff = () => {
+      try {
+        const savedData = localStorage.getItem('mira_staff_data');
+        if (savedData) {
+          const staffData = JSON.parse(savedData);
+          const mappedStaff = staffData.map((s: any) => ({
+            ...s,
+            name: s.nameEn || s.name,
+            avatar: s.photo || s.avatar,
+            role: s.position || s.role,
+            isActive: s.isActive !== undefined ? s.isActive : true
+          }));
+          setStaffList(mappedStaff);
+        } else {
+          setStaffList([]);
+        }
+      } catch (error) {
+        console.error("Error loading staff in AdminDashboard:", error);
+        setStaffList([]);
+      }
+    };
+
+    loadStaff();
+    // Listen for storage changes in case other tabs update it
+    window.addEventListener('storage', loadStaff);
+    return () => window.removeEventListener('storage', loadStaff);
   }, []);
 
   // Fetch Promo Settings
@@ -118,7 +138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role: initialRol
     
     const totalBookings = bookings.filter(b => b.status !== 'cancelled').length;
     
-    const activeTherapists = staffList.filter(s => s.status === 'Working').length;
+    const activeTherapists = staffList.filter(s => s.isActive).length;
 
     return { todayRevenue, totalBookings, activeTherapists };
   }, [bookings, staffList]);
