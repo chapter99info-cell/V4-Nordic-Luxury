@@ -145,9 +145,9 @@ const V4Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#2D241E] flex font-sans text-xl">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#2D241E] flex font-sans text-[clamp(1rem,1.5vw,1.25rem)]">
       {/* --- Sidebar --- */}
-      <aside className="w-80 bg-[#F5F2ED] border-r-2 border-[#D4AF37]/10 p-8 flex flex-col shadow-2xl">
+      <aside className="sidebar-responsive bg-[#F5F2ED] border-r-2 border-[#D4AF37]/10 p-8 flex flex-col shadow-2xl">
         <div className="mb-12 text-center">
           <h2 className="text-[#D4AF37] font-serif text-3xl font-bold italic">Mira Royale</h2>
           <p className="text-xs text-[#2D241E]/40 tracking-[0.2em] uppercase mt-2 font-bold">Management V5 - Light Mode</p>
@@ -210,10 +210,10 @@ const V4Dashboard: React.FC = () => {
       <main className="flex-1 p-16 overflow-y-auto">
         <header className="flex justify-between items-center mb-16">
           <div>
-            <h1 className="text-5xl font-serif font-bold text-[#2D241E]">
+            <h1 className="text-[clamp(2.5rem,6vw,4.5rem)] font-serif font-bold text-[#2D241E] leading-tight">
               สวัสดีค่ะคุณ {role === 'owner' ? 'เจ้าของร้าน' : staffName}
             </h1>
-            <p className="text-[#2D241E]/60 text-2xl mt-3 font-bold">ยินดีต้อนรับกลับมาค่ะ / Welcome back.</p>
+            <p className="text-[#2D241E]/60 text-[clamp(1.25rem,3vw,2rem)] mt-3 font-bold">ยินดีต้อนรับกลับมาค่ะ / Welcome back.</p>
           </div>
           <div className="flex items-center gap-6">
             <button 
@@ -264,7 +264,15 @@ const V4Dashboard: React.FC = () => {
           {activeTab === 'staff' && role === 'owner' && <StaffManagementContent staffList={staff} />}
           {activeTab === 'analytics' && role === 'owner' && <RevenueAnalyticsContent bookings={bookings} />}
           {activeTab === 'pricing' && <ServicePricing isAdmin={true} />}
-          {activeTab === 'bookings' && <BookingsContent bookings={bookings} />}
+          {activeTab === 'bookings' && (
+            <BookingsContent 
+              bookings={bookings} 
+              isBookingOpen={isBookingOpen} 
+              onToggle={toggleBookingStatus} 
+              role={role} 
+              onAlert={sendStaffAlert}
+            />
+          )}
           {activeTab === 'settings' && role === 'owner' && <SettingsContent />}
         </section>
       </main>
@@ -327,24 +335,26 @@ const SidebarItem = ({ icon, label, active, onClick }: any) => (
         : 'text-[#2D241E]/40 hover:bg-[#D4AF37]/10 hover:text-[#2D241E]'
     }`}
   >
-    {React.cloneElement(icon, { size: 32 })}
-    <span className="text-xl font-bold uppercase tracking-wider text-left leading-tight">{label}</span>
+    <div className="icon-size-responsive flex items-center justify-center">
+      {React.cloneElement(icon, { size: '100%' })}
+    </div>
+    <span className="menu-item-text text-xl font-bold uppercase tracking-wider text-left leading-tight">{label}</span>
   </button>
 );
 
 // Component ย่อย: บัตรสถิติ
 const StatCard = ({ title, value, icon, isCurrency }: any) => (
-  <div className="bg-white border-2 border-[#D4AF37]/10 p-10 rounded-[3rem] flex items-center justify-between shadow-md hover:shadow-xl transition-all">
+  <div className="bg-white border-2 border-[#D4AF37]/10 p-[clamp(1.5rem,3vw,2.5rem)] rounded-[clamp(1.5rem,4vw,3rem)] flex items-center justify-between shadow-md hover:shadow-xl transition-all">
     <div>
       <p className="text-[#D4AF37] text-sm uppercase tracking-[0.2em] mb-3 font-black">{title}</p>
       {isCurrency ? (
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-black text-[#D4AF37]">$</span>
-          <p className="text-6xl font-black text-[#2D241E]">{value}</p>
-          <span className="text-2xl font-black text-[#2D241E]/40 ml-2">AUD</span>
+          <span className="text-[clamp(1.5rem,3vw,2.5rem)] font-black text-[#D4AF37]">$</span>
+          <p className="text-[clamp(2.5rem,6vw,4rem)] font-black text-[#2D241E]">{value}</p>
+          <span className="text-[clamp(1rem,2vw,1.5rem)] font-black text-[#2D241E]/40 ml-2">AUD</span>
         </div>
       ) : (
-        <p className="text-6xl font-black text-[#2D241E]">{value}</p>
+        <p className="text-[clamp(2.5rem,6vw,4rem)] font-black text-[#2D241E]">{value}</p>
       )}
     </div>
     <div className="p-6 bg-[#FDFBF7] rounded-[2rem] border-2 border-[#D4AF37]/10 shadow-inner">
@@ -1026,7 +1036,7 @@ const StaffManagementContent = ({ staffList }: { staffList: Staff[] }) => {
 };
 
 // Component ย่อย: เนื้อหาหน้า Bookings Management
-const BookingsContent = ({ bookings }: { bookings: Booking[] }) => {
+const BookingsContent = ({ bookings, isBookingOpen, onToggle, role, onAlert }: { bookings: Booking[], isBookingOpen: boolean, onToggle: () => void, role: string | null, onAlert: () => void }) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [bookingToUpdate, setBookingToUpdate] = useState<{id: string, status: string} | null>(null);
 
@@ -1051,8 +1061,72 @@ const BookingsContent = ({ bookings }: { bookings: Booking[] }) => {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-12">
+    <div className="space-y-12">
+      {/* Booking Status Toggle (V5 Modern) */}
+      <div className="bg-white rounded-[3.5rem] p-12 border-2 border-[#D4AF37]/20 shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
+              <div className={`w-4 h-4 rounded-full animate-ping ${isBookingOpen ? 'bg-green-500' : 'bg-rose-500'}`} />
+              <h3 className="text-3xl font-black uppercase tracking-widest text-[#D4AF37]">
+                สถานะการรับจอง / BOOKING STATUS
+              </h3>
+            </div>
+            <p className={`text-[clamp(2.5rem,8vw,5rem)] font-black mb-6 ${isBookingOpen ? 'text-green-500' : 'text-rose-500'} leading-tight`}>
+              {isBookingOpen ? 'เปิดรับจองตามปกติค่ะ' : 'หยุดรับจองชั่วคราวค่ะ'}
+              <br/>
+              <span className="text-[clamp(1.5rem,4vw,2.5rem)] opacity-80">
+                {isBookingOpen ? 'Open for Bookings' : 'Stop Bookings'}
+              </span>
+            </p>
+            <div className="bg-[#FDFBF7] p-6 rounded-3xl border border-[#2D241E]/10 inline-block">
+              <p className="text-xl text-[#2D241E]/60 font-bold">
+                💡 {role === 'owner' 
+                  ? 'ใช้สำหรับหยุดรับลูกค้าใหม่เมื่อพนักงานไม่พอค่ะ' 
+                  : 'หากพนักงานไม่พอ กรุณาแจ้งเจ้าของร้านหรือกดปุ่มแจ้งเตือนค่ะ'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-6">
+            {role === 'owner' ? (
+              <button 
+                onClick={onToggle}
+                className={`group relative w-64 h-32 rounded-full transition-all duration-500 shadow-2xl ${
+                  isBookingOpen ? 'bg-green-600 shadow-green-600/20' : 'bg-rose-600 shadow-rose-600/20'
+                }`}
+              >
+                <div className={`absolute top-2 w-28 h-28 bg-white rounded-full transition-all duration-500 shadow-lg flex items-center justify-center ${
+                  isBookingOpen ? 'translate-x-32' : 'translate-x-0'
+                }`}>
+                  {isBookingOpen ? (
+                    <Check size={48} className="text-green-600" />
+                  ) : (
+                    <X size={48} className="text-rose-600" />
+                  )}
+                </div>
+                <span className={`absolute inset-0 flex items-center justify-center text-2xl font-black uppercase tracking-widest pointer-events-none ${
+                  isBookingOpen ? 'pr-32 text-white/40' : 'pl-32 text-white/40'
+                }`}>
+                  {isBookingOpen ? 'OPEN' : 'STOP'}
+                </span>
+              </button>
+            ) : (
+              <button 
+                onClick={onAlert}
+                className="group relative w-64 h-32 rounded-full bg-rose-500 shadow-2xl shadow-rose-500/20 hover:scale-105 active:scale-95 transition-all flex flex-col items-center justify-center gap-2 border-b-8 border-rose-700"
+              >
+                <Bell size={48} className="text-white animate-bounce" />
+                <span className="text-xl font-black text-white uppercase tracking-tighter">แจ้งพนักงานไม่พอค่ะ</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center">
         <div>
           <h3 className="text-4xl font-bold flex items-center gap-4 text-[#2D241E]">
             <Calendar size={40} className="text-[#D4AF37]" /> รายการจองทั้งหมด / All Bookings
@@ -1065,27 +1139,27 @@ const BookingsContent = ({ bookings }: { bookings: Booking[] }) => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b-2 border-[#2D241E]/5 bg-[#FDFBF7]">
-              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">ลูกค้า / Customer</th>
-              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">บริการ / Service</th>
-              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">วัน-เวลา / Date-Time</th>
-              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black">สถานะ / Status</th>
-              <th className="px-10 py-8 text-lg uppercase tracking-widest text-[#2D241E]/60 font-black text-center">จัดการ / Actions</th>
+              <th className="px-6 py-4 text-[clamp(0.875rem,1.5vw,1.125rem)] uppercase tracking-widest text-[#2D241E]/60 font-black">ลูกค้า / Customer</th>
+              <th className="px-6 py-4 text-[clamp(0.875rem,1.5vw,1.125rem)] uppercase tracking-widest text-[#2D241E]/60 font-black">บริการ / Service</th>
+              <th className="px-6 py-4 text-[clamp(0.875rem,1.5vw,1.125rem)] uppercase tracking-widest text-[#2D241E]/60 font-black">วัน-เวลา / Date-Time</th>
+              <th className="px-6 py-4 text-[clamp(0.875rem,1.5vw,1.125rem)] uppercase tracking-widest text-[#2D241E]/60 font-black">สถานะ / Status</th>
+              <th className="px-6 py-4 text-[clamp(0.875rem,1.5vw,1.125rem)] uppercase tracking-widest text-[#2D241E]/60 font-black text-center">จัดการ / Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#2D241E]/5">
             {bookings.map((booking) => (
               <tr key={booking.id} className="hover:bg-[#FDFBF7] transition-colors">
-                <td className="px-10 py-8">
-                  <p className="text-2xl font-bold text-[#2D241E]">{booking.clientName}</p>
-                  <p className="text-lg text-[#2D241E]/40 font-medium">{booking.clientPhone}</p>
+                <td className="px-6 py-4">
+                  <p className="text-[clamp(1.125rem,2vw,1.5rem)] font-bold text-[#2D241E]">{booking.clientName}</p>
+                  <p className="text-[clamp(0.875rem,1.5vw,1rem)] text-[#2D241E]/40 font-medium">{booking.clientPhone}</p>
                 </td>
-                <td className="px-10 py-8">
-                  <p className="text-xl font-bold text-[#2D241E]">{booking.serviceName}</p>
-                  <p className="text-3xl text-[#D4AF37] font-black">${(booking.price || booking.subtotal || 0).toLocaleString()} <span className="text-lg opacity-50">AUD</span></p>
+                <td className="px-6 py-4">
+                  <p className="text-[clamp(1rem,1.8vw,1.25rem)] font-bold text-[#2D241E]">{booking.serviceName}</p>
+                  <p className="text-[clamp(1.5rem,2.5vw,2rem)] text-[#D4AF37] font-black">${(booking.price || booking.subtotal || 0).toLocaleString()} <span className="text-sm opacity-50">AUD</span></p>
                 </td>
-                <td className="px-10 py-8">
-                  <p className="text-xl font-bold text-[#2D241E]">{booking.date}</p>
-                  <p className="text-lg text-[#2D241E]/40 font-medium">{booking.startTime}</p>
+                <td className="px-6 py-4">
+                  <p className="text-[clamp(1rem,1.8vw,1.25rem)] font-bold text-[#2D241E]">{booking.date}</p>
+                  <p className="text-[clamp(0.875rem,1.5vw,1rem)] text-[#2D241E]/40 font-medium">{booking.startTime}</p>
                 </td>
                 <td className="px-10 py-8">
                   <span className={`px-6 py-2 rounded-full text-sm font-black uppercase border-2 ${

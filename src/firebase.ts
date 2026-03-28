@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, clearIndexedDbPersistence } from 'firebase/firestore';
 import { getMessaging } from 'firebase/messaging';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -28,6 +28,11 @@ const firestoreSettings = {
 export const db = (databaseId && databaseId !== '(default)') 
   ? initializeFirestore(app, firestoreSettings, databaseId)
   : initializeFirestore(app, firestoreSettings);
+
+// เพิ่มบรรทัดนี้เข้าไปชั่วคราวเพื่อล้างข้อมูลที่ค้างอยู่ค่ะ
+clearIndexedDbPersistence(db).catch((err) => {
+  console.error("Could not clear persistence:", err);
+});
 
 export const auth = getAuth(app);
 export const messaging = getMessaging(app);
