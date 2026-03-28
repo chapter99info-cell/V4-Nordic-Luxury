@@ -18,13 +18,20 @@ const services = [
 ];
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, shopName }) => {
+  const [shopABN, setShopABN] = useState(() => localStorage.getItem('shopABN') || '');
   const [customerName, setCustomerName] = useState('');
   const [selectedService, setSelectedService] = useState(services[0]);
   const [amount, setAmount] = useState('');
   const [isCopied, setIsCopied] = useState(false);
 
+  const handleSaveABN = () => {
+    localStorage.setItem('shopABN', shopABN);
+    toast.success('บันทึกเลข ABN เรียบร้อยแล้วค่ะ / ABN Saved!');
+  };
+
   const generateMessage = () => {
-    return `Thank you for choosing ${shopName}. Your payment of $${amount} for ${selectedService} is confirmed. We hope you feel completely rejuvenated and relaxed. It was an honor to be part of your wellness journey today. We look forward to welcoming you back to our sanctuary soon.`;
+    const abnLine = shopABN ? `ABN: ${shopABN}\n` : '';
+    return `${abnLine}Thank you for choosing ${shopName}. Your payment of $${amount} for ${selectedService} is confirmed. We hope you feel completely rejuvenated and relaxed. It was an honor to be part of your wellness journey today. We look forward to welcoming you back to our sanctuary soon.`;
   };
 
   const handleSendSMS = () => {
@@ -90,10 +97,32 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sho
             </div>
 
             {/* Form Content */}
-            <div className="p-10 space-y-8">
+            <div className="p-10 space-y-8 overflow-y-auto max-h-[70vh] no-scrollbar">
+              {/* Shop ABN */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center ml-4">
+                  <label className="block modal-label font-black text-[#1a3a3a]">
+                    เลข ABN ของร้าน / Shop ABN
+                  </label>
+                  <button 
+                    onClick={handleSaveABN}
+                    className="bg-[#D4AF37] text-white px-4 py-1.5 rounded-full text-xs font-black hover:bg-[#b8962d] transition-all active:scale-95 shadow-md"
+                  >
+                    บันทึก / Save
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="เช่น 12 345 678 910 / e.g. 12 345 678 910"
+                  value={shopABN}
+                  onChange={(e) => setShopABN(e.target.value)}
+                  className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 modal-input font-bold text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all"
+                />
+              </div>
+
               {/* Customer Name */}
               <div className="space-y-3">
-                <label className="block text-xl font-black text-[#1a3a3a] ml-4">
+                <label className="block modal-label font-black text-[#1a3a3a] ml-4">
                   ชื่อลูกค้า / Customer Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -101,20 +130,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sho
                   placeholder="เช่น คุณสมชาย / e.g. Mr. Smith"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 text-2xl font-bold text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all"
+                  className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 modal-input font-bold text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all"
                 />
               </div>
 
               {/* Service Selection */}
               <div className="space-y-3">
-                <label className="block text-xl font-black text-[#1a3a3a] ml-4">
+                <label className="block modal-label font-black text-[#1a3a3a] ml-4">
                   บริการที่เลือก / Service <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <select
                     value={selectedService}
                     onChange={(e) => setSelectedService(e.target.value)}
-                    className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 text-2xl font-bold text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 modal-input font-bold text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all appearance-none cursor-pointer"
                   >
                     {services.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -126,17 +155,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sho
 
               {/* Amount */}
               <div className="space-y-3">
-                <label className="block text-xl font-black text-[#1a3a3a] ml-4">
+                <label className="block modal-label font-black text-[#1a3a3a] ml-4">
                   ราคาที่จ่ายจริง / Amount Paid ($ AUD) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-8 top-1/2 -translate-y-1/2 text-3xl font-black text-[#D4AF37]">$</span>
+                  <span className="absolute left-8 top-1/2 -translate-y-1/2 text-2xl font-black text-[#D4AF37]">$</span>
                   <input
                     type="number"
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 pl-16 text-4xl font-black text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all"
+                    className="w-full bg-[#FDFBF7] border-3 border-[#D4AF37]/10 rounded-[2rem] p-6 pl-16 modal-amount font-black text-[#1a3a3a] focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 outline-none transition-all"
                   />
                 </div>
               </div>

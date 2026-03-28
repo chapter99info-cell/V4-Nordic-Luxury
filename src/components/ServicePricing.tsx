@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Hand, Droplets, Footprints, Activity, Info, Edit2 } from 'lucide-react';
+import { Hand, Droplets, Footprints, Activity, Info, Edit2, Save } from 'lucide-react';
 
 interface PricingItem {
   id: string;
@@ -79,6 +79,19 @@ interface ServicePricingProps {
 }
 
 export const ServicePricing: React.FC<ServicePricingProps> = ({ isAdmin = false }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const toggleEdit = (id: string) => {
+    if (editingId === id) {
+      // --- จังหวะกด "บันทึก" ---
+      setEditingId(null);
+      alert("บันทึกราคาใหม่เรียบร้อยค่ะ!");
+    } else {
+      // --- จังหวะกด "แก้ไข" ---
+      setEditingId(id);
+    }
+  };
+
   return (
     <section className={`py-16 px-6 ${isAdmin ? 'bg-transparent' : 'bg-[#FDFBF7]'}`}>
       <div className="max-w-5xl mx-auto">
@@ -100,7 +113,7 @@ export const ServicePricing: React.FC<ServicePricingProps> = ({ isAdmin = false 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-[#F5F2ED] border-2 border-[#D4AF37]/10 rounded-[3rem] p-8 shadow-sm hover:shadow-md transition-all"
+              className="service-card bg-[#F5F2ED] border-2 border-[#D4AF37]/10 rounded-[3rem] p-8 shadow-sm hover:shadow-md transition-all"
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
                 <div className="flex items-start gap-6">
@@ -127,14 +140,19 @@ export const ServicePricing: React.FC<ServicePricingProps> = ({ isAdmin = false 
                   {service.options.map((opt, idx) => (
                     <div 
                       key={idx}
-                      className="bg-white px-8 py-5 rounded-[2.5rem] border-2 border-[#D4AF37]/10 flex flex-col items-center justify-center min-w-[140px] shadow-sm"
+                      className="price-item bg-white px-8 py-5 rounded-[2.5rem] border-2 border-[#D4AF37]/10 flex flex-col items-center justify-center min-w-[140px] shadow-sm"
                     >
-                      <span className="text-xs font-black text-[#1a3a3a]/40 uppercase tracking-[0.2em] mb-2">
+                      <span className="time text-xs font-black text-[#1a3a3a]/40 uppercase tracking-[0.2em] mb-2">
                         {opt.duration}
                       </span>
-                      <div className="flex items-baseline gap-1">
+                      <div className="price-value flex items-baseline gap-1">
                         <span className="text-4xl font-black text-[#1a3a3a]">
-                          ${opt.price}
+                          $ <input 
+                              type="number" 
+                              className={`price-input ${editingId === service.id ? 'editing' : ''}`} 
+                              defaultValue={opt.price} 
+                              disabled={editingId !== service.id} 
+                            />
                         </span>
                       </div>
                       <span className="text-[10px] font-black text-[#1a3a3a]/30 uppercase mt-1">
@@ -147,11 +165,24 @@ export const ServicePricing: React.FC<ServicePricingProps> = ({ isAdmin = false 
                 {isAdmin && (
                   <div className="flex lg:flex-col justify-end lg:justify-center">
                     <button 
-                      className="bg-[#D4AF37] hover:bg-[#B8860B] text-white px-12 py-7 rounded-[3rem] font-black text-2xl shadow-2xl hover:shadow-primary/40 transition-all flex items-center gap-4 group whitespace-nowrap border-b-8 border-[#b8962d] active:border-b-0 active:translate-y-2"
-                      onClick={() => console.log('Edit Price clicked')}
+                      className={`edit-btn text-white px-12 py-7 rounded-[3rem] font-black text-2xl shadow-2xl transition-all flex items-center gap-4 group whitespace-nowrap border-b-8 active:border-b-0 active:translate-y-2 ${
+                        editingId === service.id 
+                          ? 'bg-[#28a745] border-[#1e7e34] hover:bg-[#218838]' 
+                          : 'bg-[#D4AF37] border-[#b8962d] hover:bg-[#B8860B]'
+                      }`}
+                      onClick={() => toggleEdit(service.id)}
                     >
-                      <Edit2 className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-                      <span>แก้ไขราคา / Edit</span>
+                      {editingId === service.id ? (
+                        <>
+                          <Save className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                          <span>บันทึก / Save</span>
+                        </>
+                      ) : (
+                        <>
+                          <Edit2 className="w-8 h-8 group-hover:rotate-12 transition-transform" />
+                          <span>แก้ไขราคา / Edit</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
