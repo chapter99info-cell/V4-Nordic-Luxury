@@ -1,162 +1,221 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Trash2, UserPlus, Star } from 'lucide-react';
-import { toast } from 'sonner';
+import { db, storage } from '../firebase'; // --- 1. ต้อง import storage มาด้วยนะคะ
+import { collection, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // --- 2. import ตัวจัดการรูปภาพ
+import { UserPlus, Trash2, Users, Camera, Mail } from 'lucide-react';
 
-interface StaffMember {
-  id: string;
-  name: string;
-  nameEn: string;
-  nameTh: string;
-  position: string;
-  role: string;
-  gender: string;
-  isActive: boolean;
-  status: string;
-  avatar: string;
-}
-
-export const StaffManagement: React.FC = () => {
-  // --- 1. State ทั้งหมด ---
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [newStaffNameEn, setNewStaffNameEn] = useState('');
-  const [newStaffNameTh, setNewStaffNameTh] = useState('');
-  const [newStaffPosition, setNewStaffPosition] = useState('PROFESSIONAL THERAPIST');
+const StaffManagement = () => {
+  const [staff, setStaff] = useState<any[]>([]);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffEmail, setNewStaffEmail] = useState(''); // --- 3. เพิ่ม Email สำหรับ Login
   const [newStaffGender, setNewStaffGender] = useState('Female');
-  const [newStaffPhoto, setNewStaffPhoto] = useState<string | null>(null);
+  const [imageUpload, setImageUpload] = useState<File | null>(null); // --- 4. State สำหรับเก็บไฟล์รูป
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [passcode, setPasscode] = useState('');
 
-  const STORAGE_KEY = 'mira_staff_data';
+  // --- Login 1111 ---
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passcode === '1111') setIsAdmin(true);
+    else { alert('รหัสไม่ถูกต้องค่ะ'); setPasscode(''); }
+  };
 
-  // --- 2. โหลดข้อมูลจาก LocalStorage เมื่อเปิดหน้าจอ ---
+  // --- Load Data (Real-time) ---
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setStaff(JSON.parse(saved));
-    }
-  }, []);
+    if (!isAdmin) return;
+    const unsub = onSnapshot(collection(db, "staff"), (snapshot) => {
+      const staffList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStaff(staffList);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [isAdmin]);
 
-  // --- 3. ฟังก์ชันจัดการรูปภาพ ---
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewStaffPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  // --- 5. ฟังก์ชันอัปโหลดรูปภาพ (ถ้ามี) ---
+  const uploadImage = async (staffId: string) => {
+    if (imageUpload == null) return null;
+    const imageRef = ref(storage, `staff/${staffId}_${imageUpload.name}`);
+    try {
+      const snapshot = await uploadBytes(imageRef, imageUpload);
+      const url = await getDownloadURL(snapshot.ref);
+      return url;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      return null;
     }
   };
 
-  // --- 4. ฟังก์ชันเพิ่มพนักงาน (ตัวที่แก้บั๊กแล้ว) ---
-  const handleAddStaff = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newStaffNameEn.trim()) {
-      toast.error("กรุณากรอกชื่อภาษาอังกฤษด้วยค่ะ");
+  // --- 6. ฟังก์ชันเพิ่มพนักงาน (V4 + Image) ---
+  const handleAddStaff = async () => {
+    if (newStaffName.trim() === '' || newStaffEmail.trim() === '') {
+      alert("กรุณาใส่ชื่อภาษาอังกฤษและอีเมลสำหรับ Login ด้วยค่ะ");
       return;
     }
-
-    const newStaffMember: StaffMember = {
-      id: Date.now().toString(),
-      name: newStaffNameEn,
-      nameEn: newStaffNameEn,
-      nameTh: newStaffNameTh,
-      position: newStaffPosition,
-      role: newStaffPosition,
-      gender: newStaffGender,
-      isActive: true, // เปิดสวิตช์ให้หน้า Login เห็น
-      status: 'Active',
-      avatar: newStaffPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${newStaffNameEn}`,
-    };
-
-    const updatedList = [...staff, newStaffMember];
-    setStaff(updatedList);
     
-    // บันทึกลงลิ้นชักที่หน้า Login ใช้กุญแจเดียวกัน
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+    setLoading(true); // แสดงสถานะกำลังโหลดตอนบันทึก
+    try {
+      // Step A: สร้างข้อมูลเบื้องต้นใน Firestore เพื่อเอา staffId มาก่อน
+      const docRef = await addDoc(collection(db, "staff"), {
+        name: newStaffName, // ชื่อภาษาอังกฤษ
+        email: newStaffEmail, // สำหรับ Login
+        gender: newStaffGender,
+        role: "Therapist",
+        status: "Active",
+        photoUrl: "https://via.placeholder.com/150", // รูปชั่วคราว
+        createdAt: new Date().toISOString()
+      });
 
-    // ล้างค่าฟอร์ม
-    setNewStaffNameEn('');
-    setNewStaffNameTh('');
-    setNewStaffPhoto(null);
-    
-    toast.success('เพิ่มพนักงานเรียบร้อยแล้วค่ะ! 🎉');
+      // Step B: ถ้ามีรูป ให้ทำการอัปโหลด
+      if (imageUpload) {
+        const photoUrl = await uploadImage(docRef.id);
+        if (photoUrl) {
+          // Step C: อัปเดต photoUrl ที่ได้ใน Firestore
+          const staffRef = doc(db, "staff", docRef.id);
+          const { updateDoc } = await import('firebase/firestore'); // import ชั่วคราว
+          await updateDoc(staffRef, { photoUrl: photoUrl });
+        }
+      }
+
+      // Step D: เคลียร์ค่าใน Form
+      setNewStaffName('');
+      setNewStaffEmail('');
+      setNewStaffGender('Female');
+      setImageUpload(null);
+      
+      // เคลียร์ input file
+      const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      alert("เพิ่มหมอนวดคนใหม่เรียบร้อยค่ะ!");
+    } catch (e) {
+      console.error("Error adding staff: ", e);
+      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูลค่ะ! ลองเช็ค Firebase นะคะ");
+    }
+    setLoading(false);
   };
 
-  // --- 5. ฟังก์ชันลบพนักงาน ---
-  const handleDeleteStaff = (id: string) => {
-    if (window.confirm('คุณแน่ใจนะว่าต้องการลบพนักงานท่านนี้?')) {
-      const updated = staff.filter(s => s.id !== id);
-      setStaff(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      toast.success('ลบข้อมูลเรียบร้อยค่ะ');
+  // --- 7. ลบพนักงาน (V4 Only) ---
+  const handleDelete = async (id: string) => {
+    if (window.confirm("ต้องการลบหมอนวดคนนี้ออกจากระบบใช่ไหมคะ?")) {
+      await deleteDoc(doc(db, "staff", id));
+      alert("ลบสำเร็จค่ะ");
     }
   };
 
-  // --- 6. ส่วนการแสดงผล (UI) ---
-  return (
-    <div className="p-4 max-w-4xl mx-auto space-y-8 font-sans">
-      <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
-        <h2 className="text-2xl font-bold text-[#1a3a3a] mb-6 flex items-center gap-2">
-          <UserPlus className="text-[#D4AF37]" /> เพิ่มพนักงานใหม่
-        </h2>
-
-        <form onSubmit={handleAddStaff} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">ชื่อภาษาอังกฤษ (สำหรับ Login)</label>
-              <input 
-                type="text" 
-                value={newStaffNameEn}
-                onChange={(e) => setNewStaffNameEn(e.target.value)}
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37] outline-none"
-                placeholder="เช่น Keng"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">ชื่อภาษาไทย</label>
-              <input 
-                type="text" 
-                value={newStaffNameTh}
-                onChange={(e) => setNewStaffNameTh(e.target.value)}
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37] outline-none"
-                placeholder="เช่น พี่แสน"
-              />
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            className="w-full py-4 bg-[#D4AF37] text-black font-bold rounded-xl hover:bg-[#b8962d] transition-colors shadow-lg shadow-[#D4AF37]/20"
-          >
-            + เพิ่มพนักงาน / Add Staff
+  // ... (ส่วนที่เหลือคือการแสดงผล... ก๊อปไปวางทับอันเดิมได้เลยค่ะ) ...
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-stone-50 rounded-2xl border-2 border-dashed border-stone-200">
+        <h2 className="text-xl font-bold mb-4 text-stone-700">🔐 กรุณาใส่รหัสผ่านผู้ดูแล</h2>
+        <form onSubmit={handleLogin} className="flex gap-2">
+          <input 
+            type="password" 
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            placeholder="รหัส 4 หลัก..."
+            className="border rounded-xl px-4 py-2 w-32 text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-teal-500"
+          />
+          <button type="submit" className="bg-stone-800 text-white px-6 py-2 rounded-xl hover:bg-black transition-all">
+            ตกลง
           </button>
         </form>
       </div>
+    );
+  }
 
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-[#1a3a3a] px-2">รายชื่อพนักงานในระบบ</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {staff.map((s) => (
-            <div key={s.id} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-4">
-                <img src={s.avatar} alt={s.nameEn} className="w-12 h-12 rounded-full border border-[#D4AF37]/20" />
-                <div>
-                  <p className="font-bold text-gray-800">{s.nameEn} {s.nameTh && `(${s.nameTh})`}</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest">{s.position}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => handleDeleteStaff(s.id)}
-                className="p-2 text-red-400 hover:bg-red-50 rounded-full transition-colors"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
-          ))}
-          {staff.length === 0 && (
-            <p className="text-center col-span-full py-10 text-gray-400 italic">ยังไม่มีข้อมูลพนักงานค่ะ</p>
-          )}
+  return (
+    <div className="p-6 bg-white rounded-2xl shadow-sm border-2 border-[#D4AF37]/20">
+      <h2 className="text-2xl font-bold mb-6 text-[#2D241E] flex items-center gap-2">
+        <Users className="text-[#D4AF37]" /> จัดการทีมพนักงาน
+      </h2>
+      
+      {/* --- ส่วนเพิ่มพนักงาน (มีอัปโหลดรูป) --- */}
+      <div className="bg-[#FDFBF7] p-4 rounded-2xl mb-8 border border-[#D4AF37]/10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+          {/* ชื่อภาษาอังกฤษ */}
+          <input 
+            type="text" 
+            value={newStaffName}
+            onChange={(e) => setNewStaffName(e.target.value)}
+            placeholder="ชื่อภาษาอังกฤษ (สำหรับโชว์หน้าเว็บ)..."
+            className="border-2 border-[#D4AF37]/10 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#D4AF37] outline-none"
+          />
+          {/* อีเมลสำหรับ Login */}
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="email" 
+              value={newStaffEmail}
+              onChange={(e) => setNewStaffEmail(e.target.value)}
+              placeholder="อีเมล (สำหรับ Login)..."
+              className="border-2 border-[#D4AF37]/10 rounded-xl px-4 pl-10 py-2 w-full outline-none"
+            />
+          </div>
+          {/* เลือกเพศ */}
+          <select 
+            value={newStaffGender}
+            onChange={(e) => setNewStaffGender(e.target.value)}
+            className="border-2 border-[#D4AF37]/10 rounded-xl px-4 py-2 bg-white outline-none"
+          >
+            <option value="Female">เพศหญิง (Female)</option>
+            <option value="Male">เพศชาย (Male)</option>
+          </select>
+          {/* ปุ่มอัปโหลดรูป */}
+          <div className="relative">
+            <label htmlFor="fileInput" className="border-2 border-dashed border-[#D4AF37]/30 text-[#D4AF37] rounded-xl px-4 py-2 flex items-center gap-2 cursor-pointer hover:bg-[#FDFBF7]/50 w-full justify-center">
+              <Camera size={18} /> {imageUpload ? imageUpload.name.substring(0, 10) + '...' : 'อัปโหลดรูป...'}
+            </label>
+            <input 
+              id="fileInput"
+              type="file" 
+              onChange={(event) => {
+                if (event.target.files && event.target.files[0]) {
+                  setImageUpload(event.target.files[0]);
+                }
+              }}
+              className="hidden" // ซ่อน input file เดิมๆ
+            />
+          </div>
         </div>
+        <button 
+          onClick={handleAddStaff}
+          disabled={loading}
+          className="bg-[#D4AF37] text-white px-10 py-2.5 rounded-xl w-full flex items-center justify-center gap-2 hover:bg-[#b8962d] transition-all disabled:bg-gray-300 shadow-lg shadow-[#D4AF37]/20"
+        >
+          {loading ? 'กำลังบันทึกข้อมูลและอัปโหลดรูป...' : <> <UserPlus size={20} /> เพิ่มหมอนวด人ใหม่ลงระบบ </ > }
+        </button>
+      </div>
+
+      {/* --- รายชื่อพนักงาน (V4 + Show Image) --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {staff.map((member) => (
+          <div key={member.id} className="border-2 border-[#D4AF37]/5 p-4 rounded-2xl flex justify-between items-center hover:shadow-md transition-all bg-white group">
+            <div className="flex items-center gap-3">
+              {/* แสดงรูปพนักงาน */}
+              <img 
+                src={member.photoUrl || "https://via.placeholder.com/150"} 
+                alt={member.name}
+                className="w-16 h-16 rounded-full object-cover border-2 border-[#D4AF37]/10"
+              />
+              <div>
+                <p className="font-bold text-[#2D241E] text-lg">{member.name}</p>
+                <p className="text-sm text-gray-500 flex items-center gap-1"> <Mail size={14} /> {member.email}</p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-1 inline-block ${member.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
+                  {member.gender}
+                </span>
+              </div>
+            </div>
+            
+            {/* ปุ่มลบชื่อ */}
+            <button 
+          onClick={() => handleDelete(member.id)} 
+          className="opacity-0 group-hover:opacity-100 text-rose-400 p-2 hover:bg-rose-50 rounded-lg transition-all"
+        >
+          <Trash2 size={18} />
+        </button>
+          </div>
+        ))}
       </div>
     </div>
   );
