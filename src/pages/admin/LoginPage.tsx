@@ -24,28 +24,25 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (showStaffSelection) {
-      try {
-        const savedData = localStorage.getItem('mira_staff_data');
-        console.log("Current Staff in Storage (Login):", savedData);
-        if (savedData) {
-          const staffList = JSON.parse(savedData);
-          // Filter active staff and map fields to match the UI expectations
-          const filtered = staffList
-            .filter((s: any) => s.isActive === true || s.status === 'Active' || s.status === 'Working')
-            .map((s: any) => ({
-              ...s,
-              name: s.nameEn || s.name, // Support both structures
-              avatar: s.photo || s.avatar || `https://picsum.photos/seed/${s.id}/400/400`,
-              role: s.position || s.role || 'Therapist'
-            }));
-          setActiveStaff(filtered);
-        } else {
-          setActiveStaff([]);
-        }
-      } catch (error) {
-        console.error("Error loading staff for login:", error);
+      const unsub = onSnapshot(collection(db, "staff"), (snapshot) => {
+        const staffList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log("Current Staff from Firestore (Login):", staffList);
+        
+        // Filter active staff and map fields to match the UI expectations
+        const filtered = staffList
+          .filter((s: any) => s.isActive === true || s.status === 'Active' || s.status === 'Working')
+          .map((s: any) => ({
+            ...s,
+            name: s.name,
+            avatar: s.photoUrl || `https://picsum.photos/seed/${s.id}/400/400`,
+            role: s.role || 'Therapist'
+          }));
+        setActiveStaff(filtered);
+      }, (err) => {
+        console.error("Error loading staff for login:", err);
         setActiveStaff([]);
-      }
+      });
+      return () => unsub();
     }
   }, [showStaffSelection]);
 

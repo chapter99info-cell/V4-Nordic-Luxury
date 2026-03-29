@@ -63,12 +63,11 @@ service cloud.firestore {
     // Document ID: staffId
     // Fields:
     //   - name: string (required)
+    //   - email: string (required, format: email)
     //   - role: string (required)
-    //   - label: string (optional)
-    //   - avatar: string (optional)
-    //   - imageUrl: string (optional)
-    //   - specialties: list (optional, items: string)
-    //   - status: string (required, enum: ["Working", "Off"])
+    //   - gender: string (optional, enum: ["Female", "Male"])
+    //   - photoUrl: string (optional)
+    //   - status: string (required, enum: ["Active", "Inactive", "Working", "Off"])
     //   - isActive: bool (required)
     //   - createdAt: string (optional, format: date-time)
     //
@@ -213,16 +212,15 @@ service cloud.firestore {
     }
 
     function isValidStaff(data) {
-      return hasRequiredFields(['name', 'role', 'status', 'isActive']) &&
-        hasOnlyAllowedFields(['name', 'role', 'label', 'avatar', 'imageUrl', 'specialties', 'status', 'isActive', 'createdAt']) &&
+      return hasRequiredFields(['name', 'email', 'role', 'status', 'isActive']) &&
+        hasOnlyAllowedFields(['name', 'email', 'role', 'gender', 'photoUrl', 'status', 'isActive', 'createdAt']) &&
         data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+        data.email is string && isValidEmail(data.email) &&
         data.role is string && data.role.size() > 0 && data.role.size() < 100 &&
-        data.status in ["Working", "Off"] &&
+        data.status in ["Active", "Inactive", "Working", "Off"] &&
         data.isActive is bool &&
-        (data.label == null || (data.label is string && data.label.size() < 100)) &&
-        (data.avatar == null || (data.avatar is string && data.avatar.size() < 500)) &&
-        (data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() < 500)) &&
-        (data.specialties == null || (data.specialties is list && data.specialties.size() < 20)) &&
+        (data.gender == null || data.gender in ["Female", "Male"]) &&
+        (data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() < 500)) &&
         (data.createdAt == null || isValidDateTimeString(data.createdAt));
     }
 

@@ -42,11 +42,13 @@ export interface Staff {
   avatar: string;
   imageUrl?: string;
   specialties: string[];
-  status: 'Working' | 'Off';
+  status: 'Working' | 'Off' | 'Active' | 'Inactive';
   locationStatus?: 'At the Beach' | 'In-Store';
   isActive: boolean;
   fcmToken?: string;
   createdAt?: string;
+  email?: string;
+  gender?: string;
 }
 
 export interface Holiday {

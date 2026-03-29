@@ -96,16 +96,15 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
         "role": { "type": "string" },
-        "label": { "type": "string" },
-        "avatar": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "specialties": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string", "enum": ["Working", "Off"] },
+        "gender": { "type": "string", "enum": ["Female", "Male"] },
+        "photoUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Working", "Off"] },
         "isActive": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "role", "status", "isActive"]
+      "required": ["name", "email", "role", "status", "isActive"]
     },
     "products": {
       "title": "Product",

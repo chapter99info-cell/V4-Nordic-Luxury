@@ -3,6 +3,7 @@ import { db, storage } from '../firebase'; // --- 1. ต้อง import storage
 import { collection, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // --- 2. import ตัวจัดการรูปภาพ
 import { UserPlus, Trash2, Users, Camera, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 
 const StaffManagement = () => {
   const [staff, setStaff] = useState<any[]>([]);
@@ -18,7 +19,7 @@ const StaffManagement = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (passcode === '1111') setIsAdmin(true);
-    else { alert('รหัสไม่ถูกต้องค่ะ'); setPasscode(''); }
+    else { toast.error('รหัสไม่ถูกต้องค่ะ'); setPasscode(''); }
   };
 
   // --- Load Data (Real-time) ---
@@ -49,7 +50,7 @@ const StaffManagement = () => {
   // --- 6. ฟังก์ชันเพิ่มพนักงาน (V4 + Image) ---
   const handleAddStaff = async () => {
     if (newStaffName.trim() === '' || newStaffEmail.trim() === '') {
-      alert("กรุณาใส่ชื่อภาษาอังกฤษและอีเมลสำหรับ Login ด้วยค่ะ");
+      toast.error("กรุณาใส่ชื่อภาษาอังกฤษและอีเมลสำหรับ Login ด้วยค่ะ");
       return;
     }
     
@@ -62,6 +63,7 @@ const StaffManagement = () => {
         gender: newStaffGender,
         role: "Therapist",
         status: "Active",
+        isActive: true, // --- เพิ่มฟิลด์นี้เพื่อให้ผ่าน Rules และ Login ได้
         photoUrl: "https://via.placeholder.com/150", // รูปชั่วคราว
         createdAt: new Date().toISOString()
       });
@@ -87,10 +89,10 @@ const StaffManagement = () => {
       const fileInput = document.getElementById('fileInput') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
-      alert("เพิ่มหมอนวดคนใหม่เรียบร้อยค่ะ!");
+      toast.success("เพิ่มหมอนวดคนใหม่เรียบร้อยค่ะ!");
     } catch (e) {
       console.error("Error adding staff: ", e);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูลค่ะ! ลองเช็ค Firebase นะคะ");
+      toast.error("เกิดข้อผิดพลาดในการบันทึกข้อมูลค่ะ! ลองเช็ค Firebase นะคะ");
     }
     setLoading(false);
   };
@@ -98,8 +100,12 @@ const StaffManagement = () => {
   // --- 7. ลบพนักงาน (V4 Only) ---
   const handleDelete = async (id: string) => {
     if (window.confirm("ต้องการลบหมอนวดคนนี้ออกจากระบบใช่ไหมคะ?")) {
-      await deleteDoc(doc(db, "staff", id));
-      alert("ลบสำเร็จค่ะ");
+      try {
+        await deleteDoc(doc(db, "staff", id));
+        toast.success("ลบสำเร็จค่ะ");
+      } catch (error) {
+        toast.error("เกิดข้อผิดพลาดในการลบข้อมูลค่ะ");
+      }
     }
   };
 

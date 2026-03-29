@@ -55,33 +55,15 @@ const V4Dashboard: React.FC = () => {
       setBookings(data);
     });
 
-    // Fetch Staff from LocalStorage
-    const loadStaff = () => {
-      try {
-        const savedData = localStorage.getItem('mira_staff_data');
-        if (savedData) {
-          const staffData = JSON.parse(savedData);
-          const mappedStaff = staffData.map((s: any) => ({
-            ...s,
-            name: s.nameEn || s.name,
-            avatar: s.photo || s.avatar,
-            role: s.position || s.role,
-            isActive: s.isActive !== undefined ? s.isActive : true
-          }));
-          setStaff(mappedStaff);
-        } else {
-          setStaff([]);
-        }
-      } catch (error) {
-        console.error("Error loading staff in V4Dashboard:", error);
-        setStaff([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStaff();
-    window.addEventListener('storage', loadStaff);
+    // Fetch Staff from Firestore
+    const unsubscribeStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+      setStaff(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching staff in V4Dashboard:", error);
+      setLoading(false);
+    });
 
     // Listen for Check-in Notifications
     const qCheckIn = query(
@@ -115,7 +97,7 @@ const V4Dashboard: React.FC = () => {
     return () => {
       unsubscribeBooking();
       unsubscribeBookings();
-      window.removeEventListener('storage', loadStaff);
+      unsubscribeStaff();
       unsubscribeCheckIn();
     };
   }, []);
@@ -525,10 +507,34 @@ const OverviewContent = ({ bookings, role, isBookingOpen, onToggle, onAlert }: a
       <h3 className="text-lg lg:text-xl font-bold mb-4 lg:mb-6 flex items-center gap-2 text-[#2D241E]">
         <Clock size={20} className="text-[#D4AF37] lg:w-6 lg:h-6" /> กิจกรรมล่าสุดค่ะ / Recent Activities
       </h3>
-      <div className="flex flex-col items-center justify-center py-6 lg:py-10 border-2 border-dashed border-[#2D241E]/5 rounded-lg lg:rounded-xl">
-        <p className="text-[#2D241E]/40 text-center text-sm lg:text-lg font-bold tracking-wider">
-          ไม่มีกิจกรรมล่าสุดค่ะ / No recent activities
-        </p>
+      <div className="space-y-4">
+        {bookings.slice(0, 5).map((booking: Booking) => (
+          <div key={booking.id} className="flex items-center justify-between p-3 lg:p-4 bg-[#FDFBF7] rounded-xl border border-[#D4AF37]/10 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3 lg:gap-4">
+              <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center shadow-inner ${
+                booking.status === 'confirmed' ? 'bg-green-100 text-green-600' : 
+                booking.status === 'pending' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-600'
+              }`}>
+                <UserIcon size={20} className="lg:w-6 lg:h-6" />
+              </div>
+              <div>
+                <p className="text-sm lg:text-base font-black text-[#2D241E] leading-tight">{booking.clientName}</p>
+                <p className="text-[10px] lg:text-xs text-[#2D241E]/60 font-bold uppercase tracking-widest">{booking.serviceName}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs lg:text-sm font-black text-[#D4AF37]">${booking.price || 0}</p>
+              <p className="text-[8px] lg:text-[10px] text-[#2D241E]/40 font-bold uppercase">{booking.startTime}</p>
+            </div>
+          </div>
+        ))}
+        {bookings.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-6 lg:py-10 border-2 border-dashed border-[#2D241E]/5 rounded-lg lg:rounded-xl">
+            <p className="text-[#2D241E]/40 text-center text-sm lg:text-lg font-bold tracking-wider">
+              ไม่มีกิจกรรมล่าสุดค่ะ / No recent activities
+            </p>
+          </div>
+        )}
       </div>
     </div>
   </div>
@@ -738,6 +744,11 @@ const RevenueAnalyticsContent = ({ bookings }: { bookings: Booking[] }) => {
 const BookingsContent = ({ bookings, isBookingOpen, onToggle, role, onAlert }: { bookings: Booking[], isBookingOpen: boolean, onToggle: () => void, role: string | null, onAlert: () => void }) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [bookingToUpdate, setBookingToUpdate] = useState<{id: string, status: string} | null>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredBookings = statusFilter === 'all' 
+    ? bookings 
+    : bookings.filter(b => b.status === statusFilter);
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     setBookingToUpdate({ id, status: newStatus });
@@ -825,12 +836,25 @@ const BookingsContent = ({ bookings, isBookingOpen, onToggle, role, onAlert }: {
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-[#2D241E]">
             <Calendar size={20} className="text-[#D4AF37] md:w-6 md:h-6" /> รายการจองทั้งหมด / All Bookings
           </h3>
           <p className="text-[#2D241E]/70 text-xs md:text-sm mt-0.5 font-medium">จัดการคิวและสถานะการจอง / Manage queues and statuses</p>
+        </div>
+        <div className="flex gap-2 bg-white p-1 rounded-xl border border-[#D4AF37]/20 shadow-sm w-full md:w-auto overflow-x-auto no-scrollbar">
+          {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                statusFilter === s ? 'bg-[#D4AF37] text-white shadow-md' : 'text-[#2D241E]/40 hover:text-[#2D241E]'
+              }`}
+            >
+              {s === 'all' ? 'ทั้งหมด / All' : s === 'pending' ? 'รอ / Pending' : s === 'confirmed' ? 'ยืนยัน / Confirmed' : s === 'completed' ? 'เสร็จ / Done' : 'ยกเลิก / Cancel'}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -846,7 +870,7 @@ const BookingsContent = ({ bookings, isBookingOpen, onToggle, role, onAlert }: {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#2D241E]/5">
-            {bookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <tr key={booking.id} className="hover:bg-[#FDFBF7] transition-colors">
                 <td className="px-3 md:px-4 py-2 md:py-3">
                   <p className="text-xs md:text-sm font-bold text-[#2D241E]">{booking.clientName}</p>
